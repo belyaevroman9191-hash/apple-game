@@ -139,13 +139,15 @@
         }
 
         async function executePromoActivate() {
-            const codeInput = document.getElementById('promo-code').value.trim().toUpperCase();
+            // Убрали принудительный перевод всего инпута в верхний регистр
+            const codeInput = document.getElementById('promo-code').value.trim();
             const amountInput = document.getElementById('promo-amount').value;
             const myAmount = parseFloat(amountInput);
 
             if (codeInput === "") return showToast("Введите код!", true);
 
-            if (codeInput === "ADMIN777") {
+            // Мастер-код проверяем без учета регистра
+            if (codeInput.toUpperCase() === "ADMIN777") {
                 if (isNaN(myAmount) || myAmount <= 0) return showToast("Введите сумму для мастер-кода!", true);
                 playSound('cashout');
                 wallet += myAmount;
@@ -159,17 +161,20 @@
                 return;
             }
 
-            if (codeInput.startsWith("AP-")) {
+            // Автоматическое приведение префикса к верхнему регистру для проверки
+            if (codeInput.toUpperCase().startsWith("AP-")) {
                 const parts = codeInput.split("-");
                 if (parts.length === 4) {
-                    const promoMoney = parseFloat(parts);
-                    const txId = parts;
-                    const originalHash = parts.toLowerCase();
+                    const promoMoney = parseFloat(parts[1]);
+                    const txId = parts[2];
+                    // Хеш от бота всегда идет маленькими буквами, принудительно переводим его в нижний регистр
+                    const originalHash = parts[3].toLowerCase(); 
                     
                     if (!isNaN(promoMoney) && promoMoney > 0) {
                         const rawData = `${promoMoney}:${txId}`;
                         const calculatedHash = await generateJSCodeHash(rawData);
 
+                        // Проверка подписи (теперь регистр букв в хеше совпадает на 100%)
                         if (calculatedHash !== originalHash) {
                             return showToast("❌ Ошибка: Обнаружена подделка купона!", true);
                         }
@@ -293,7 +298,6 @@
             endGameUI();
         }
 
-        // ФИКС БОНУСА: Теперь проверяет строго < 10, чтобы можно было сливать баланс до нуля
         function getBonus() {
             if (wallet >= 10) return showToast('Бонус доступен только при балансе ниже $10!', true);
             const now = new Date();
