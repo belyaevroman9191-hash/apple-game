@@ -40,85 +40,155 @@
         <button class="btn-cashout" id="btn-cashout" onclick="cashoutGame()">Забрать выигрыш</button>
         <button class="btn-bonus" id="btn-bonus" onclick="getBonus()">🎁 Взять Бонус раз в час</button>
     </div>
-
     <script>
-        const tg = window.Telegram.WebApp; tg.expand();
-        const userId = tg.initDataUnsafe?.user?.id || 12345; 
-        
-        // Вшит ваш прямой IP хостинга
         const SERVER_URL = "http://5.129.224.175:8000"; 
+        const tg = window.Telegram?.WebApp || null;
+        const userId = tg?.initDataUnsafe?.user?.id || 12345; 
 
         let multipliers = [], currentRow = 0, gameRunning = false;
 
         async function loadProfile() {
             try {
-                let res = await fetch(`${SERVER_URL}/api/profile`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({user_id: userId}) });
+                let res = await fetch(`${SERVER_URL}/api/profile`, { 
+                    method: 'POST', 
+                    headers: {'Content-Type': 'application/json'}, 
+                    body: JSON.stringify({user_id: userId}) 
+                });
                 let data = await res.json();
                 document.getElementById('user-balance').innerText = `$${data.balance.toFixed(2)}`;
                 multipliers = data.multipliers;
                 buildField();
             } catch(e) {
-                alert("Ошибка подключения к серверу бэкенда!");
+                console.log("Бэкенд недоступен по адресу " + SERVER_URL);
             }
         }
 
         async function getBonus() {
-            let res = await fetch(`${SERVER_URL}/api/bonus`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({user_id: userId}) });
-            let data = await res.json();
-            if(data.success) { alert(`🎉 Успешно начислено $${data.amount}!`); loadProfile(); } 
-            else { alert(data.message); }
+            try {
+                let res = await fetch(`${SERVER_URL}/api/bonus`, { 
+                    method: 'POST', 
+                    headers: {'Content-Type': 'application/json'}, 
+                    body: JSON.stringify({user_id: userId}) 
+                });
+                let data = await res.json();
+                if(data.success) { 
+                    alert(`🎉 Успешно начислено $${data.amount}!`); 
+                    loadProfile(); 
+                } else { 
+                    alert(data.message); 
+                }
+            } catch(e) {
+                alert("Не удалось связаться с сервером для получения бонуса.");
+            }
         }
 
         function buildField() {
-            const grid = document.getElementById('grid'); grid.innerHTML = '';
+            const grid = document.getElementById('grid'); 
+            grid.innerHTML = '';
             for (let r = 9; r >= 0; r--) {
-                const row = document.createElement('div'); row.className = `row r-${r}`;
-                row.innerHTML = `<div class="row-info">x${multipliers[r]}</div>`;
-                const cellsWrap = document.createElement('div'); cellsWrap.style = 'display:grid; grid-template-columns:repeat(5,1fr); gap:6px;';
-                for (let c = 0; c < 5; c++) { cellsWrap.innerHTML += `<div class="cell" id="c-${r}-${c}" onclick="step(${r}, ${c})"><div class="front">❓</div><div class="back" id="b-${r}-${c}"></div></div>`; }
-                row.appendChild(cellsWrap); grid.appendChild(row);
+                const row = document.createElement('div'); 
+                row.className = `row r-${r}`;
+                row.innerHTML = `<div class="row-info">x${multipliers[r] || ''}</div>`;
+                const cellsWrap = document.createElement('div'); 
+                cellsWrap.style = 'display:grid; grid-template-columns:repeat(5,1fr); gap:6px;';
+                for (let c = 0; c < 5; c++) { 
+                    cellsWrap.innerHTML += `<div class="cell" id="c-${r}-${c}" onclick="step(${r}, ${c})"><div class="front">❓</div><div class="back" id="b-${r}-${c}"></div></div>`; 
+                }
+                row.appendChild(cellsWrap); 
+                grid.appendChild(row);
             }
         }
 
         async function startGame() {
             if(gameRunning) return;
             const bet = parseFloat(document.getElementById('bet-amount').value);
-            let res = await fetch(`${SERVER_URL}/api/start`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({user_id: userId, bet: bet}) });
-            if(!res.ok) return alert('Недостаточно денег или неверная ставка!');
-            let data = await res.json();
-            document.getElementById('user-balance').innerText = `$${data.new_balance.toFixed(2)}`;
-            gameRunning = true; currentRow = 0; buildField(); highlightRow();
-            document.getElementById('btn-action').style.display = 'none'; document.getElementById('btn-bonus').style.display = 'none'; document.getElementById('bet-amount').disabled = true;
+            try {
+                let res = await fetch(`${SERVER_URL}/api/start`, { 
+                    method: 'POST', 
+                    headers: {'Content-Type': 'application/json'}, 
+                    body: JSON.stringify({user_id: userId, bet: bet}) 
+                });
+                if(!res.ok) return alert('Недостаточно денег или неверная ставка!');
+                let data = await res.json();
+                document.getElementById('user-balance').innerText = `$${data.new_balance.toFixed(2)}`;
+                gameRunning = true; 
+                currentRow = 0; 
+                buildField(); 
+                highlightRow();
+                document.getElementById('btn-action').style.display = 'none'; 
+                document.getElementById('btn-bonus').style.display = 'none'; 
+                document.getElementById('bet-amount').disabled = true;
+            } catch(e) {
+                alert("Ошибка соединения с игровым сервером при старте раунда.");
+            }
         }
 
-        function highlightRow() { document.querySelectorAll('.row').forEach(el => el.classList.remove('active')); document.querySelector(`.r-${currentRow}`).classList.add('active'); }
+        function highlightRow() { 
+            document.querySelectorAll('.row').forEach(el => el.classList.remove('active')); 
+            const activeRow = document.querySelector(`.r-${currentRow}`);
+            if(activeRow) activeRow.classList.add('active'); 
+        }
 
         async function step(r, c) {
             if(!gameRunning || r !== currentRow) return;
-            let res = await fetch(`${SERVER_URL}/api/step`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({user_id: userId, col: c}) });
-            let data = await res.json();
-            const cell = document.getElementById(`c-${r}-${c}`), back = document.getElementById(`b-${r}-${c}`);
-            cell.classList.add('flipped');
-            
-            if(data.status === 'continue' || data.status === 'win_all') {
-                back.innerText = '🍏'; cell.classList.add('win');
-                document.getElementById('btn-cashout').style.display = 'block'; document.getElementById('btn-cashout').innerText = `Забрать $${data.current_win.toFixed(2)}`;
-                if(data.status === 'win_all') { alert('👑 ВЫ ИГРУ ПРОШЛИ!'); endGameUI(); } else { currentRow++; highlightRow(); }
-            } else {
-                back.innerText = '❌'; cell.classList.add('lose'); 
-                document.body.style.animation = "shake 0.3s";
-                setTimeout(() => document.body.style.animation = "", 300);
-                alert('💥 Огрызок! Вы проиграли.'); endGameUI();
+            try {
+                let res = await fetch(`${SERVER_URL}/api/step`, { 
+                    method: 'POST', 
+                    headers: {'Content-Type': 'application/json'}, 
+                    body: JSON.stringify({user_id: userId, col: c}) 
+                });
+                let data = await res.json();
+                const cell = document.getElementById(`c-${r}-${c}`), back = document.getElementById(`b-${r}-${c}`);
+                cell.classList.add('flipped');
+                
+                if(data.status === 'continue' || data.status === 'win_all') {
+                    back.innerText = '🍏'; 
+                    cell.classList.add('win');
+                    document.getElementById('btn-cashout').style.display = 'block'; 
+                    document.getElementById('btn-cashout').innerText = `Забрать $${data.current_win.toFixed(2)}`;
+                    if(data.status === 'win_all') { 
+                        alert('👑 ВЫ ИГРУ ПРОШЛИ!'); 
+                        endGameUI(); 
+                    } else { 
+                        currentRow++; 
+                        highlightRow(); 
+                    }
+                } else {
+                    back.innerText = '❌'; 
+                    cell.classList.add('lose'); 
+                    document.body.style.animation = "shake 0.3s";
+                    setTimeout(() => document.body.style.animation = "", 300);
+                    alert('💥 Огрызок! Вы проиграли.'); 
+                    endGameUI();
+                }
+            } catch(e) {
+                alert("Потеряно соединение с сервером во время шага.");
             }
         }
 
         async function cashoutGame() {
-            let res = await fetch(`${SERVER_URL}/api/cashout`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({user_id: userId}) });
-            let data = await res.json();
-            alert(`💰 Вы забрали $${data.win.toFixed(2)}`); endGameUI();
+            try {
+                let res = await fetch(`${SERVER_URL}/api/cashout`, { 
+                    method: 'POST', 
+                    headers: {'Content-Type': 'application/json'}, 
+                    body: JSON.stringify({user_id: userId}) 
+                });
+                let data = await res.json();
+                alert(`💰 Вы забрали $${data.win.toFixed(2)}`); 
+                endGameUI();
+            } catch(e) {
+                alert("Ошибка вывода средств с сервера.");
+            }
         }
 
-        function endGameUI() { gameRunning = false; document.getElementById('btn-action').style.display = 'block'; document.getElementById('btn-bonus').style.display = 'block'; document.getElementById('btn-cashout').style.display = 'none'; document.getElementById('bet-amount').disabled = false; loadProfile(); }
+        function endGameUI() { 
+            gameRunning = false; 
+            document.getElementById('btn-action').style.display = 'block'; 
+            document.getElementById('btn-bonus').style.display = 'block'; 
+            document.getElementById('btn-cashout').style.display = 'none'; 
+            document.getElementById('bet-amount').disabled = false; 
+            loadProfile(); 
+        }
         
         loadProfile();
     </script>
