@@ -12,7 +12,7 @@
         .grid { display: grid; grid-template-rows: repeat(10, 1fr); gap: 8px; width: 100%; max-width: 360px; margin-bottom: 20px; }
         .row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; opacity: 0.3; transition: all 0.3s ease; position: relative; }
         .row.active { opacity: 1; transform: scale(1.02); }
-        .cell { aspect-ratio: 1; background: #16222f; border: 1px solid #253746; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 22px; cursor: pointer; position: relative; transform-style: preserve-3d; transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .cell { aspect-ratio: 1; background: #16222f; border: 1px solid #253746; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; cursor: pointer; position: relative; transform-style: preserve-3d; transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
         .cell.flipped { transform: rotateY(180deg); }
         .cell .front, .cell .back { position: absolute; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; backface-visibility: hidden; border-radius: 9px; }
         .cell .back { transform: rotateY(180deg); }
@@ -25,10 +25,16 @@
         .btn-cashout { background: #f1c40f; color: #111; display: none; }
         .btn-bonus { background: #3498db; color: white; margin-top: 5px; }
         .row-info { position: absolute; left: -45px; top: 35%; font-size: 11px; color: #64748b; width: 40px; text-align: right; }
+        
+        /* Плавное уведомление (Тост) вместо системных окон */
+        #toast { position: fixed; top: -60px; left: 50%; transform: translateX(-50%); background: #2f3542; color: #fff; padding: 12px 24px; border-radius: 30px; font-weight: bold; box-shadow: 0 5px 15px rgba(0,0,0,0.5); transition: top 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); z-index: 1000; font-size: 13px; border: 1px solid rgba(255,255,255,0.1); text-align: center; white-space: nowrap; }
+        #toast.show { top: 20px; }
         @keyframes shake { 0%, 100% {transform: translateX(0);} 20%, 60% {transform: translateX(-8px);} 40%, 80% {transform: translateX(8px);} }
     </style>
 </head>
 <body>
+
+    <div id="toast">Уведомление</div>
 
     <div class="header-panel">
         <span>🍏 Баланс: <span class="balance" id="user-balance">$500.00</span></span>
@@ -51,6 +57,14 @@
         let currentRow = 0, gameRunning = false, gameField = [], currentBet = 10;
         let wallet = 500.0;
         let lastBonusTime = null;
+
+        function showToast(text, isDanger = false) {
+            const toast = document.getElementById('toast');
+            toast.innerText = text;
+            toast.style.background = isDanger ? '#e74c3c' : '#2ecc71';
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 2200);
+        }
 
         function loadLocalData() {
             const savedWallet = localStorage.getItem('apple_game_wallet');
@@ -93,7 +107,7 @@
                 for (let c = 0; c < 5; c++) {
                     cellsWrap.innerHTML += `
                         <div class="cell" id="c-${r}-${c}" onclick="step(${r}, ${c})">
-                            <div class="front">❓</div>
+                            <div class="front">&#10067;</div>
                             <div class="back" id="b-${r}-${c}"></div>
                         </div>
                     `;
@@ -106,8 +120,8 @@
         function startGame() {
             if(gameRunning) return;
             currentBet = parseFloat(document.getElementById('bet-amount').value);
-            if(currentBet < 10 || isNaN(currentBet)) return alert('Минимальная ставка $10');
-            if(currentBet > wallet) return alert('Недостаточно баланса!');
+            if(currentBet < 10 || isNaN(currentBet)) return showToast('Минимальная ставка $10', true);
+            if(currentBet > wallet) return showToast('Недостаточно баланса!', true);
             
             wallet -= currentBet;
             saveLocalData();
@@ -138,14 +152,14 @@
             cell.classList.add('flipped');
 
             if(gameField[r][c] === 1) {
-                back.innerText = '🍏';
+                back.innerHTML = '&#127823;';
                 cell.classList.add('win');
                 let currentWin = currentBet * multipliers[r];
                 document.getElementById('btn-cashout').style.display = 'block';
                 document.getElementById('btn-cashout').innerText = `Забрать $${currentWin.toFixed(2)}`;
                 
                 if(currentRow === 9) {
-                    alert('👑 ПОБЕДА! Вы прошли всю пирамиду!');
+                    showToast('👑 ПОБЕДА! Вы прошли всю пирамиду!');
                     wallet += currentWin;
                     endGameUI();
                 } else {
@@ -153,11 +167,11 @@
                     highlightRow();
                 }
             } else {
-                back.innerText = '❌';
+                back.innerHTML = '&#10060;';
                 cell.classList.add('lose');
                 document.body.style.animation = "shake 0.3s";
                 setTimeout(() => document.body.style.animation = "", 300);
-                alert('💥 Огрызок! Вы проиграли ставку.');
+                showToast('💥 Огрызок! Ставка проиграна.', true);
                 endGameUI();
             }
         }
@@ -166,26 +180,26 @@
             if(!gameRunning || currentRow === 0) return;
             let finalWin = currentBet * multipliers[currentRow - 1];
             wallet += finalWin;
-            alert(`💰 Вы успешно забрали $${finalWin.toFixed(2)}`);
+            showToast(`💰 Вы забрали $${finalWin.toFixed(2)}`);
             endGameUI();
         }
 
         function getBonus() {
-            if (wallet >= 10) return alert('Бонус доступен только при балансе ниже $10!');
+            if (wallet >= 10) return showToast('Бонус доступен только при балансе ниже $10!', true);
             
             const now = new Date();
             if (lastBonusTime) {
                 const passed = now - new Date(lastBonusTime);
                 if (passed < 3600000) { 
                     const leftMins = Math.ceil((3600000 - passed) / 60000);
-                    return alert(`⏳ Вы уже брали бонус. Подождите еще ${leftMins} мин.`);
+                    return showToast(`⏳ Подождите еще ${leftMins} мин.`, true);
                 }
             }
             
             const randomBonus = Math.floor(Math.random() * (500 - 10 + 1)) + 10;
             wallet += randomBonus;
             lastBonusTime = now.toISOString();
-            alert(`🎲 Удача! Начислен бонус спасения: +$${randomBonus}`);
+            showToast(`🎲 Получен бонус спасения: +$${randomBonus}`);
             endGameUI();
         }
 
