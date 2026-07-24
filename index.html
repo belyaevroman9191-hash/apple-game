@@ -119,15 +119,36 @@
         });
 
         function closeAdminPanel() { document.getElementById('admin-panel').style.display = 'none'; }
-        // --- 👑 УМНАЯ АВТОНОМНАЯ АКТИВАЦИЯ КУПОНОВ И МАСТЕР-КОДА ---
-        function executePromoActivate() {
+        // --- 👑 КРИПТОГРАФИЧЕСКАЯ ПРОВЕРКА КУПОНОВ БЕЗ СЕРВЕРА ---
+        
+        // ⚠️ ВАЖНО: Сюда нужно вписать ТОЧНО ТАКОЙ ЖЕ КЛЮЧ, как в файле bot.js в переменной SECRET_SALT!
+        const SECRET_SALT = "MY_SUPER_SECRET_KEY_12345";
+
+        // Простая JS-функция для создания Хеша SHA-256 (аналог криптографии в Node.js)
+        async function generateJSCodeHash(text) {
+            const encoder = new TextEncoder();
+            const data = encoder.encode(text);
+            const keyData = encoder.encode(SECRET_SALT);
+            
+            const cryptoKey = await window.crypto.subtle.importKey(
+                "raw", keyData, { name: "HMAC", hash: { name: "SHA-256" } }, false, ["sign"]
+            );
+            const signature = await window.crypto.subtle.sign("HMAC", cryptoKey, data);
+            
+            return Array.from(new Uint8Array(signature))
+                .map(b => b.toString(16).padStart(2, '0'))
+                .join('')
+                .substring(0, 10);
+        }
+
+        async function executePromoActivate() {
             const codeInput = document.getElementById('promo-code').value.trim().toUpperCase();
             const amountInput = document.getElementById('promo-amount').value;
             const myAmount = parseFloat(amountInput);
 
             if (codeInput === "") return showToast("Введите код!", true);
 
-            // 1. ПРОВЕРКА ВАШЕГО ЛИЧНОГО МАСТЕР-КОДА (Для вас)
+            // 1. ПРОВЕРКА ВАШЕГО ЛИЧНОГО МАСТЕР-КОДА (Работает локально только для вас)
             if (codeInput === "ADMIN777") {
                 if (isNaN(myAmount) || myAmount <= 0) return showToast("Введите сумму для мастер-кода!", true);
                 playSound('cashout');
@@ -142,28 +163,38 @@
                 return;
             }
 
-            // 2. ПРОВЕРКА АВТОМАТИЧЕСКИХ КУПОНОВ ИЗ БОТА (Для других игроков)
-            // Проверяем, что код начинается на AP- и имеет правильную структуру
+            // 2. КРИПТОГРАФИЧЕСКАЯ ПРОВЕРКА КУПОНОВ ИЗ БОТА
             if (codeInput.startsWith("AP-")) {
-                const parts = codeInput.split("-"); // Разбирает код по дефисам ["AP", "5000", "X7R"]
+                const parts = codeInput.split("-"); // Разбираем код: ["AP", "СУММА", "ID ТРАНЗАКЦИИ", "ХЕШ"]
                 
-                if (parts.length >= 3) {
-                    const promoMoney = parseFloat(parts[1]); // Достает сумму из середины кода
+                if (parts.length === 4) {
+                    const promoMoney = parseFloat(parts[1]);
+                    const txId = parts[2];
+                    const originalHash = parts[3].toLowerCase();
                     
                     if (!isNaN(promoMoney) && promoMoney > 0) {
-                        // Защита: Проверяем по памяти телефона, не вводил ли игрок этот код ранее
-                        const isUsed = localStorage.getItem('activated_coupon_' + codeInput);
-                        if (isUsed) {
-                            return showToast("❌ Этот код уже был активирован ранее!", true);
+                        // Пересчитываем хеш прямо в телефоне на основе секретного ключа
+                        const rawData = `${promoMoney}:${txId}`;
+                        const calculatedHash = await generateJSCodeHash(rawData);
+
+                        // ЕСЛИ ИГРОК ИЗМЕНИЛ ХОТЬ ОДНУ ЦИФРУ ИЛИ БУКВУ — ХЕШИ НЕ СОВПАДУТ!
+                        if (calculatedHash !== originalHash) {
+                            return showToast("❌ Ошибка: Обнаружена подделка купона!", true);
                         }
 
-                        // Начисляем деньги игроку
+                        // Защита от повторной активации по уникальному ID транзакции
+                        const isTxUsed = localStorage.getItem('used_tx_id_' + txId);
+                        if (isTxUsed) {
+                            return showToast("❌ Этот купон уже был активирован ранее!", true);
+                        }
+
+                        // Если все проверки пройдены, начисляем баланс
                         playSound('cashout');
                         wallet += promoMoney;
-                        localStorage.setItem('activated_coupon_' + codeInput, 'true'); // Сжигаем код для этого телефона
+                        localStorage.setItem('used_tx_id_' + txId, 'true'); // Навсегда сжигает эту транзакцию на телефоне
                         saveLocalData();
                         updateUI();
-                        showToast(`🎁 Код принят! Зачислено: +$${promoMoney.toFixed(2)}`);
+                        showToast(`🎁 Купон принят! Начислено: +$${promoMoney.toFixed(2)}`);
                         closeAdminPanel();
                         document.getElementById('promo-code').value = "";
                         document.getElementById('promo-amount').value = "";
@@ -173,7 +204,6 @@
                 }
             }
 
-            // Если ни одна проверка не прошла
             showToast("❌ Неверный или использованный код!", true);
             document.getElementById('promo-code').value = "";
         }
@@ -218,7 +248,7 @@
             if(!gameRunning || r !== currentRow) return;
             const cell = document.getElementById(`c-${r}-${c}`), back = document.getElementById(`b-${r}-${c}`);
             cell.classList.add('flipped');
-            if(gameField[r][c] === 1) {
+            if(gameField[r][r, c] === 1) {
                 playSound('apple'); back.innerHTML = '🍏'; cell.classList.add('win');
                 let currentWin = currentBet * multipliers[r];
                 document.getElementById('btn-cashout').style.display = 'block'; document.getElementById('btn-cashout').innerText = `ЗАБРАТЬ $${currentWin.toFixed(2)}`;
