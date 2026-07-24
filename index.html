@@ -10,63 +10,48 @@
         .header-panel { width: 100%; max-width: 360px; display: flex; justify-content: space-between; padding: 10px 5px; box-sizing: border-box; margin-bottom: 10px; font-size: 16px; font-weight: bold; }
         .balance-box { display: flex; align-items: center; gap: 5px; }
         .balance-coin { color: #f1c40f; font-size: 18px; }
-
         .game-container { width: 100%; max-width: 360px; display: flex; flex-direction: column; gap: 5px; background: #262626; padding: 12px; border-radius: 8px; box-sizing: border-box; margin-bottom: 15px; }
         .game-row-wrapper { display: flex; align-items: center; width: 100%; gap: 10px; height: 38px; }
         .coeff-box { width: 55px; background: #3d3131; border-radius: 4px; font-size: 10px; font-weight: bold; text-align: center; padding: 4px 0; color: #f3a4a4; flex-shrink: 0; border: 1px solid #4d3b3b; }
         .cells-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; flex-grow: 1; height: 100%; opacity: 0.2; transition: opacity 0.2s; }
         .cells-row.active { opacity: 1; }
-        
         .cell { height: 100%; background: #333333; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 22px; cursor: pointer; position: relative; transform-style: preserve-3d; transition: transform 0.4s; border: 1px solid #444; }
         .cell.flipped { transform: rotateY(180deg); }
         .cell .front, .cell .back { position: absolute; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; backface-visibility: hidden; border-radius: 3px; }
         .cell .front { background: #3d3d3d; }
         .cells-row.active .cell .front { border: 1px solid #4a90e2; }
         .cell .back { transform: rotateY(180deg); }
-        
         .cell.win { background: #27ae60 !important; border-color: #2ecc71; }
         .cell.lose { background: #c0392b !important; border-color: #e74c3c; }
-        
         .controls { width: 100%; max-width: 360px; display: flex; flex-direction: column; gap: 8px; margin-top: auto; }
         input { padding: 12px; border-radius: 6px; border: 1px solid #444; background: #222; color: white; font-size: 16px; text-align: center; outline: none; font-weight: bold; }
-        
         button { padding: 14px; border-radius: 6px; border: none; font-size: 15px; font-weight: bold; cursor: pointer; transition: all 0.2s; text-transform: uppercase; }
         .btn-play { background: #2ecc71; color: white; }
         .btn-cashout { background: #9b59b6; color: white; display: none; }
         .btn-bonus { background: #3498db; color: white; margin-top: 2px; font-size: 13px; padding: 10px; }
-        
-        #toast { position: fixed; top: -60px; left: 50%; transform: translateX(-50%); background: #2f3542; color: #fff; padding: 12px 24px; border-radius: 30px; font-weight: bold; box-shadow: 0 5px 15px rgba(0,0,0,0.5); transition: top 0.3s; z-index: 1000; font-size: 13px; text-align: center; }
+        #toast { position: fixed; top: -60px; left: 50%; transform: translateX(-50%); background: #2f3542; color: #fff; padding: 12px 24px; border-radius: 30px; font-weight: bold; box-shadow: 0 5px 15px rgba(0,0,0,0.5); transition: top 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); z-index: 3000; font-size: 13px; text-align: center; white-space: nowrap; border: 1px solid rgba(255,255,255,0.1); }
         #toast.show { top: 20px; }
-
-        /* Стиль продвинутой админки с выбором игрока */
         .admin-modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #222; border: 2px solid #3498db; border-radius: 12px; padding: 20px; z-index: 2000; width: 290px; box-shadow: 0 0 20px rgba(52,152,219,0.5); text-align: center; box-sizing: border-box; }
         .admin-modal h3 { margin-top: 0; color: #3498db; font-size: 16px; text-transform: uppercase; margin-bottom: 15px; }
-        .admin-modal input { width: 100%; box-sizing: border-box; margin-bottom: 10px; font-size: 14px; padding: 10px; }
+        .admin-modal input { width: 100%; box-sizing: border-box; margin-bottom: 10px; font-size: 14px; padding: 10px; background: #111; color: #fff; border: 1px solid #444; border-radius: 6px; text-align: left; }
         .admin-btn { background: #3498db; color: white; width: 100%; padding: 12px; border-radius: 6px; font-weight: bold; font-size: 14px; }
         .admin-close { color: #aaa; font-size: 12px; margin-top: 12px; cursor: pointer; display: block; text-decoration: underline; }
+        @keyframes shake { 0%, 100% {transform: translateX(0);} 20%, 60% {transform: translateX(-8px);} 40%, 80% {transform: translateX(8px);} }
     </style>
 </head>
 <body>
-
     <div id="toast">Уведомление</div>
-
-    <!-- Модернизированное окно админки -->
     <div class="admin-modal" id="admin-panel">
         <h3>👑 Админ-Панель</h3>
-        <input type="text" id="admin-target" placeholder="ID игрока или @username">
-        <input type="number" id="admin-amount" placeholder="Сумма начисления" min="1">
+        <input type="text" id="admin-target" placeholder="ID игрока">
+        <input type="text" id="admin-amount" placeholder="Сумма начисления">
         <button class="admin-btn" onclick="executeAdminGive()">Выдать валюту</button>
         <span class="admin-close" onclick="closeAdminPanel()">Закрыть</span>
     </div>
-
     <div class="header-panel">
         <span id="secret-trigger" style="cursor: pointer;">🍏 Apple of Fortune</span>
-        <div class="balance-box">
-            <span class="balance-coin">🪙</span>
-            <span id="user-balance">500.00</span>
-        </div>
+        <div class="balance-box"><span class="balance-coin">🪙</span><span id="user-balance">500.00</span></div>
     </div>
-
     <div class="game-container" id="game-container"></div>
     <div class="controls">
         <input type="number" id="bet-amount" value="10" min="10">
@@ -76,14 +61,13 @@
     </div>
 
     <script>
+        const SERVER_URL = "http://5.129.224.175:8000"; 
         const tg = window.Telegram?.WebApp;
         if (tg && typeof tg.expand === 'function') tg.expand();
 
         const multipliers = [1.23, 1.54, 1.93, 2.41, 4.02, 6.71, 11.18, 27.97, 69.93, 349.68];
         let currentRow = 0, gameRunning = false, gameField = [], currentBet = 10;
-        let wallet = 500.0;
-        let lastBonusTime = null;
-        let adminClicks = 0;
+        let wallet = 500.0, lastBonusTime = null, adminClicks = 0;
 
         const AudioContext = window.AudioContext || window.webkitAudioContext;
         const audioCtx = AudioContext ? new AudioContext() : null;
@@ -94,24 +78,19 @@
             const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
             osc.connect(gain); gain.connect(audioCtx.destination);
             if (type === 'click') {
-                osc.type = 'sine'; osc.frequency.setValueAtTime(300, audioCtx.currentTime);
-                osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.05);
+                osc.type = 'sine'; osc.frequency.setValueAtTime(300, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.05);
                 gain.gain.setValueAtTime(0.1, audioCtx.currentTime); gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.05);
                 osc.start(); osc.stop(audioCtx.currentTime + 0.05);
             } else if (type === 'apple') {
-                osc.type = 'sine'; osc.frequency.setValueAtTime(523.25, audioCtx.currentTime);
-                osc.frequency.setValueAtTime(659.25, audioCtx.currentTime + 0.08);
-                osc.frequency.setValueAtTime(783.99, audioCtx.currentTime + 0.16);
+                osc.type = 'sine'; osc.frequency.setValueAtTime(523.25, audioCtx.currentTime); osc.frequency.setValueAtTime(659.25, audioCtx.currentTime + 0.08); osc.frequency.setValueAtTime(783.99, audioCtx.currentTime + 0.16);
                 gain.gain.setValueAtTime(0.15, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
                 osc.start(); osc.stop(audioCtx.currentTime + 0.3);
             } else if (type === 'lose') {
-                osc.type = 'sawtooth'; osc.frequency.setValueAtTime(100, audioCtx.currentTime);
-                osc.frequency.linearRampToValueAtTime(30, audioCtx.currentTime + 0.25);
+                osc.type = 'sawtooth'; osc.frequency.setValueAtTime(100, audioCtx.currentTime); osc.frequency.linearRampToValueAtTime(30, audioCtx.currentTime + 0.25);
                 gain.gain.setValueAtTime(0.25, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.25);
                 osc.start(); osc.stop(audioCtx.currentTime + 0.25);
             } else if (type === 'cashout') {
-                osc.type = 'sine'; osc.frequency.setValueAtTime(587.33, audioCtx.currentTime);
-                osc.frequency.exponentialRampToValueAtTime(1174.66, audioCtx.currentTime + 0.15);
+                osc.type = 'sine'; osc.frequency.setValueAtTime(587.33, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(1174.66, audioCtx.currentTime + 0.15);
                 gain.gain.setValueAtTime(0.15, audioCtx.currentTime); gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
                 osc.start(); osc.stop(audioCtx.currentTime + 0.2);
             }
@@ -119,108 +98,73 @@
 
         function showToast(text, isDanger = false) {
             const toast = document.getElementById('toast');
-            toast.innerText = text;
-            toast.style.background = isDanger ? '#e74c3c' : '#2ecc71';
-            toast.classList.add('show');
-            setTimeout(() => toast.classList.remove('show'), 2000);
+            toast.innerText = text; toast.style.background = isDanger ? '#e74c3c' : '#2ecc71';
+            toast.classList.add('show'); setTimeout(() => toast.classList.remove('show'), 2200);
         }
 
         function loadLocalData() {
-            const savedWallet = localStorage.getItem('apple_game_wallet');
-            const savedBonus = localStorage.getItem('apple_game_last_bonus');
-            if (savedWallet !== null) wallet = parseFloat(savedWallet);
-            if (savedBonus !== null) lastBonusTime = savedBonus;
+            const savedWallet = localStorage.getItem('apple_game_wallet'); const savedBonus = localStorage.getItem('apple_game_last_bonus');
+            if (savedWallet !== null) wallet = parseFloat(savedWallet); if (savedBonus !== null) lastBonusTime = savedBonus;
             updateUI();
         }
 
         function saveLocalData() {
-            localStorage.setItem('apple_game_wallet', wallet);
-            if (lastBonusTime) localStorage.setItem('apple_game_last_bonus', lastBonusTime);
+            localStorage.setItem('apple_game_wallet', wallet); if (lastBonusTime) localStorage.setItem('apple_game_last_bonus', lastBonusTime);
         }
 
-        function updateUI() {
-            document.getElementById('user-balance').innerText = wallet.toFixed(2);
-        }
-        // --- ПРОДВИНУТАЯ СЕКРЕТНАЯ АДМИНКА ---
+        function updateUI() { document.getElementById('user-balance').innerText = wallet.toFixed(2); }
+
         document.getElementById('secret-trigger').addEventListener('click', () => {
-            adminClicks++;
-            if (adminClicks >= 3) {
-                adminClicks = 0;
-                const accessCode = prompt("Введите секретный код админа:");
-                if (accessCode === "admin1312") {
-                    document.getElementById('admin-panel').style.display = 'block';
-                } else if (accessCode !== null) {
-                    alert("Неверный код доступа!");
-                }
-            }
+            adminClicks++; if (adminClicks >= 3) { adminClicks = 0; document.getElementById('admin-panel').style.display = 'block'; }
         });
 
-        function closeAdminPanel() {
-            document.getElementById('admin-panel').style.display = 'none';
-        }
-
-        function executeAdminGive() {
+        function closeAdminPanel() { document.getElementById('admin-panel').style.display = 'none'; }
+        async function executeAdminGive() {
             const target = document.getElementById('admin-target').value.trim();
-            const amountInput = document.getElementById('admin-amount').value;
+            const amountInput = document.getElementById('admin-amount').value.trim();
             const amount = parseFloat(amountInput);
             const myTgId = tg?.initDataUnsafe?.user?.id ? String(tg.initDataUnsafe.user.id) : "12345";
 
-            if (isNaN(amount) || amount <= 0) return alert("Введите корректную сумму!");
+            if (isNaN(amount) || amount <= 0) return showToast("Введите верную сумму!", true);
 
-            // Если поле пустое или там ваш ID/Ник — начисляем локально вам на экран
-            if (target === "" || target === myTgId || (tg?.initDataUnsafe?.user?.username && target === '@' + tg.initDataUnsafe.user.username)) {
-                wallet += amount;
-                saveLocalData();
-                updateUI();
-                showToast(`👑 Начислено +$${amount.toFixed(2)} на ваш счет`);
+            if (target === "" || target === myTgId) {
+                wallet += amount; saveLocalData(); updateUI();
+                showToast(`👑 Начислено +$${amount.toFixed(2)} на ваш счет`); closeAdminPanel();
             } else {
-                // Если указан другой игрок — отправляем боту секретную строку-команду
-                if (tg && typeof tg.sendData === 'function') {
-                    tg.sendData(JSON.stringify({
-                        action: "admin_give",
-                        player: target,
-                        money: amount
-                    }));
-                    showToast(`📤 Чек на $${amount} отправлен боту!`, false);
-                } else {
-                    alert("Отправка данных игрокам работает только внутри Telegram!");
-                }
+                try {
+                    let res = await fetch(`${SERVER_URL}/api/admin_give_proxy`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ admin_id: parseInt(myTgId), target_id: parseInt(target), money: amount })
+                    });
+                    let rData = await res.json();
+                    if(res.ok && rData.success) { showToast(`✅ Успешно выдано $${amount} игроку ${target}`); } 
+                    else { showToast(rData.detail || "Ошибка выдачи!", true); }
+                } catch(e) { showToast("Ошибка связи с бэкендом хостинга!", true); }
+                closeAdminPanel();
             }
-            closeAdminPanel();
-            document.getElementById('admin-target').value = "";
-            document.getElementById('admin-amount').value = "";
+            document.getElementById('admin-target').value = ""; document.getElementById('admin-amount').value = "";
             if (!gameRunning) buildField();
         }
-        // -------------------------------------
 
         function generateField() {
             let field = [];
             for (let row = 0; row < 10; row++) {
                 let bad = row < 5 ? 1 : (row < 7 ? 2 : (row < 9 ? 3 : 4));
                 let line = Array(bad).fill(0).concat(Array(5 - bad).fill(1));
-                line.sort(() => Math.random() - 0.5);
-                field.push(line);
+                line.sort(() => Math.random() - 0.5); field.push(line);
             }
             return field;
         }
 
         function buildField() {
-            const container = document.getElementById('game-container');
-            container.innerHTML = '';
+            const container = document.getElementById('game-container'); container.innerHTML = '';
             for (let r = 9; r >= 0; r--) {
-                const rowWrapper = document.createElement('div');
-                rowWrapper.className = 'game-row-wrapper';
-                const coeffBox = document.createElement('div');
-                coeffBox.className = 'coeff-box';
-                coeffBox.innerText = `x${multipliers[r]}`;
-                const cellsRow = document.createElement('div');
-                cellsRow.className = `cells-row r-${r}`;
-                for (let c = 0; c < 5; c++) {
-                    cellsRow.innerHTML += `<div class="cell" id="c-${r}-${c}" onclick="step(${r}, ${c})"><div class="front"></div><div class="back" id="b-${r}-${c}"></div></div>`;
-                }
-                rowWrapper.appendChild(coeffBox);
-                rowWrapper.appendChild(cellsRow);
-                container.appendChild(rowWrapper);
+                const rowWrapper = document.createElement('div'); rowWrapper.className = 'game-row-wrapper';
+                const coeffBox = document.createElement('div'); coeffBox.className = 'coeff-box'; coeffBox.innerText = `x${multipliers[r]}`;
+                const cellsRow = document.createElement('div'); cellsRow.className = `cells-row r-${r}`;
+                for (let c = 0; c < 5; c++) { cellsRow.innerHTML += `<div class="cell" id="c-${r}-${c}" onclick="step(${r}, ${c})"><div class="front"></div><div class="back" id="b-${r}-${c}"></div></div>`; }
+                rowWrapper.appendChild(coeffBox); rowWrapper.appendChild(cellsRow); container.appendChild(rowWrapper);
             }
         }
 
@@ -229,18 +173,14 @@
             currentBet = parseFloat(document.getElementById('bet-amount').value);
             if(currentBet < 10 || isNaN(currentBet)) return showToast('Минимальная ставка $10', true);
             if(currentBet > wallet) return showToast('Недостаточно баланса!', true);
-            playSound('click');
-            wallet -= currentBet;
-            saveLocalData();
-            updateUI();
+            playSound('click'); wallet -= currentBet; saveLocalData(); updateUI();
             gameRunning = true; currentRow = 0; gameField = generateField(); buildField(); highlightRow();
             document.getElementById('btn-action').style.display = 'none'; document.getElementById('btn-bonus').style.display = 'none'; document.getElementById('bet-amount').disabled = true;
         }
 
         function highlightRow() {
             document.querySelectorAll('.cells-row').forEach(el => el.classList.remove('active'));
-            const activeRow = document.querySelector(`.r-${currentRow}`);
-            if(activeRow) activeRow.classList.add('active');
+            const activeRow = document.querySelector(`.r-${currentRow}`); if(activeRow) activeRow.classList.add('active');
         }
 
         function step(r, c) {
@@ -279,10 +219,6 @@
             gameRunning = false; document.getElementById('btn-action').style.display = 'block'; document.getElementById('btn-bonus').style.display = 'block'; document.getElementById('btn-cashout').style.display = 'none'; document.getElementById('bet-amount').disabled = false;
             saveLocalData(); updateUI(); buildField();
         }
-
-        const shakeStyle = document.createElement('style');
-        shakeStyle.innerHTML = `@keyframes shake { 0%, 100% {transform: translateX(0);} 20%, 60% {transform: translateX(-8px);} 40%, 80% {transform: translateX(8px);} }`;
-        document.head.appendChild(shakeStyle);
 
         loadLocalData();
         buildField();
