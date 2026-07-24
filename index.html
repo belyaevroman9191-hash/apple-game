@@ -33,7 +33,7 @@
         #toast.show { top: 20px; }
         .admin-modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #222; border: 2px solid #3498db; border-radius: 12px; padding: 20px; z-index: 2000; width: 290px; box-shadow: 0 0 20px rgba(52,152,219,0.5); text-align: center; box-sizing: border-box; }
         .admin-modal h3 { margin-top: 0; color: #3498db; font-size: 16px; text-transform: uppercase; margin-bottom: 15px; }
-        .admin-modal input { width: 100%; box-sizing: border-box; margin-bottom: 10px; font-size: 14px; padding: 10px; background: #111; color: #fff; border: 1px solid #444; border-radius: 6px; text-align: left; }
+        .admin-modal input { width: 100%; box-sizing: border-box; margin-bottom: 10px; font-size: 14px; padding: 10px; background: #111; color: #fff; border: 1px solid #444; border-radius: 6px; text-align: center; text-transform: uppercase; }
         .admin-btn { background: #3498db; color: white; width: 100%; padding: 12px; border-radius: 6px; font-weight: bold; font-size: 14px; }
         .admin-close { color: #aaa; font-size: 12px; margin-top: 12px; cursor: pointer; display: block; text-decoration: underline; }
         @keyframes shake { 0%, 100% {transform: translateX(0);} 20%, 60% {transform: translateX(-8px);} 40%, 80% {transform: translateX(8px);} }
@@ -42,10 +42,9 @@
 <body>
     <div id="toast">Уведомление</div>
     <div class="admin-modal" id="admin-panel">
-        <h3>👑 Админ-Панель</h3>
-        <input type="text" id="admin-target" placeholder="ID игрока">
-        <input type="text" id="admin-amount" placeholder="Сумма начисления">
-        <button class="admin-btn" onclick="executeAdminGive()">Выдать валюту</button>
+        <h3>🎁 АКТИВАЦИЯ КОДА</h3>
+        <input type="text" id="promo-code" placeholder="AP-XXXXXX">
+        <button class="admin-btn" onclick="executePromoActivate()">АКТИВИРОВАТЬ</button>
         <span class="admin-close" onclick="closeAdminPanel()">Закрыть</span>
     </div>
     <div class="header-panel">
@@ -119,31 +118,22 @@
         });
 
         function closeAdminPanel() { document.getElementById('admin-panel').style.display = 'none'; }
-        async function executeAdminGive() {
-            const target = document.getElementById('admin-target').value.trim();
-            const amountInput = document.getElementById('admin-amount').value.trim();
-            const amount = parseFloat(amountInput);
-            const myTgId = tg?.initDataUnsafe?.user?.id ? String(tg.initDataUnsafe.user.id) : "12345";
-
-            if (isNaN(amount) || amount <= 0) return showToast("Введите верную сумму!", true);
-
-            if (target === "" || target === myTgId) {
-                wallet += amount; saveLocalData(); updateUI();
-                showToast(`👑 Начислено +$${amount.toFixed(2)} на ваш счет`); closeAdminPanel();
-            } else {
-                try {
-                    let res = await fetch(`${SERVER_URL}/api/admin_give_proxy`, {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({ admin_id: parseInt(myTgId), target_id: parseInt(target), money: amount })
-                    });
-                    let rData = await res.json();
-                    if(res.ok && rData.success) { showToast(`✅ Успешно выдано $${amount} игроку ${target}`); } 
-                    else { showToast(rData.detail || "Ошибка выдачи!", true); }
-                } catch(e) { showToast("Ошибка связи с бэкендом хостинга!", true); }
-                closeAdminPanel();
-            }
-            document.getElementById('admin-target').value = ""; document.getElementById('admin-amount').value = "";
+        async function executePromoActivate() {
+            const codeInput = document.getElementById('promo-code').value.trim();
+            if (codeInput === "") return showToast("Введите код!", true);
+            try {
+                let res = await fetch(`${SERVER_URL}/api/activate_promo`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ code: codeInput })
+                });
+                let data = await res.json();
+                if (res.ok && data.success) {
+                    playSound('cashout'); wallet += data.money; saveLocalData(); updateUI();
+                    showToast(`🎉 Код активирован! Получено +$${data.money}`); closeAdminPanel();
+                } else { showToast(data.detail || "Неверный код!", true); }
+            } catch(e) { showToast("Ошибка связи с сервером!", true); }
+            document.getElementById('promo-code').value = "";
             if (!gameRunning) buildField();
         }
 
@@ -219,6 +209,10 @@
             gameRunning = false; document.getElementById('btn-action').style.display = 'block'; document.getElementById('btn-bonus').style.display = 'block'; document.getElementById('btn-cashout').style.display = 'none'; document.getElementById('bet-amount').disabled = false;
             saveLocalData(); updateUI(); buildField();
         }
+
+        const shakeStyle = document.createElement('style');
+        shakeStyle.innerHTML = `@keyframes shake { 0%, 100% {transform: translateX(0);} 20%, 60% {transform: translateX(-8px);} 40%, 80% {transform: translateX(8px);} }`;
+        document.head.appendChild(shakeStyle);
 
         loadLocalData();
         buildField();
