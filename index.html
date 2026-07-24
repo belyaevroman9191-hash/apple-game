@@ -162,9 +162,9 @@
             if (codeInput.startsWith("AP-")) {
                 const parts = codeInput.split("-");
                 if (parts.length === 4) {
-                    const promoMoney = parseFloat(parts[1]);
-                    const txId = parts[2];
-                    const originalHash = parts[3].toLowerCase();
+                    const promoMoney = parseFloat(parts);
+                    const txId = parts;
+                    const originalHash = parts.toLowerCase();
                     
                     if (!isNaN(promoMoney) && promoMoney > 0) {
                         const rawData = `${promoMoney}:${txId}`;
@@ -224,9 +224,21 @@
             currentBet = parseFloat(document.getElementById('bet-amount').value);
             if(currentBet < 10 || isNaN(currentBet)) return showToast('Минимальная ставка $10', true);
             if(currentBet > wallet) return showToast('Недостаточно баланса!', true);
-            playSound('click'); wallet -= currentBet; saveLocalData(); updateUI();
-            gameRunning = true; currentRow = 0; gameField = generateField(); buildField(); highlightRow();
-            document.getElementById('btn-action').style.display = 'none'; document.getElementById('btn-bonus').style.display = 'none'; document.getElementById('bet-amount').disabled = true;
+            
+            playSound('click');
+            wallet -= currentBet;
+            saveLocalData();
+            updateUI();
+
+            gameRunning = true;
+            currentRow = 0;
+            gameField = generateField();
+            buildField();
+            highlightRow();
+            
+            document.getElementById('btn-action').style.display = 'none';
+            document.getElementById('btn-bonus').style.display = 'none';
+            document.getElementById('bet-amount').disabled = true;
         }
 
         function highlightRow() {
@@ -237,7 +249,6 @@
         function step(r, c) {
             if(!gameRunning || r !== currentRow) return;
             
-            // Фикс бага: Прячем кнопку мгновенно при любом тапе на клетку, чтобы нельзя было заабьюзить
             document.getElementById('btn-cashout').style.display = 'none';
 
             const cell = document.getElementById(`c-${r}-${c}`), back = document.getElementById(`b-${r}-${c}`);
@@ -247,14 +258,12 @@
                 playSound('apple'); back.innerHTML = '🍏'; cell.classList.add('win');
                 let currentWin = currentBet * multipliers[r];
                 
-                // Показываем кнопку "Забрать выигрыш" только если ход успешный
                 document.getElementById('btn-cashout').style.display = 'block'; 
                 document.getElementById('btn-cashout').innerText = `ЗАБРАТЬ $${currentWin.toFixed(2)}`;
                 
                 if(currentRow === 9) { 
                     showToast('👑 ПОБЕДА! Вы прошли всю пирамиду!'); 
                     wallet += currentWin; 
-                    // Жестко отключаем статус игры сразу
                     gameRunning = false;
                     document.getElementById('btn-cashout').style.display = 'none';
                     setTimeout(endGameUI, 1500); 
@@ -263,7 +272,6 @@
                     highlightRow(); 
                 }
             } else {
-                // Ход неверный — раунд мгновенно закрывается, кнопка стирается навсегда
                 gameRunning = false;
                 document.getElementById('btn-cashout').style.display = 'none';
                 
@@ -274,12 +282,10 @@
         }
 
         function cashoutGame() {
-            // Жесткая проверка: если игра уже завершена или юзер проиграл, функция выдачи денег сбросится
             if(!gameRunning || currentRow === 0) {
                 document.getElementById('btn-cashout').style.display = 'none';
                 return;
             }
-            
             playSound('cashout'); 
             let finalWin = currentBet * multipliers[currentRow - 1];
             wallet += finalWin; 
@@ -287,6 +293,7 @@
             endGameUI();
         }
 
+        // ФИКС БОНУСА: Теперь проверяет строго < 10, чтобы можно было сливать баланс до нуля
         function getBonus() {
             if (wallet >= 10) return showToast('Бонус доступен только при балансе ниже $10!', true);
             const now = new Date();
@@ -306,6 +313,10 @@
             document.getElementById('bet-amount').disabled = false;
             saveLocalData(); updateUI(); buildField();
         }
+
+        const shakeStyle = document.createElement('style');
+        shakeStyle.innerHTML = `@keyframes shake { 0%, 100% {transform: translateX(0);} 20%, 60% {transform: translateX(-8px);} 40%, 80% {transform: translateX(8px);} }`;
+        document.head.appendChild(shakeStyle);
 
         loadLocalData();
         buildField();
