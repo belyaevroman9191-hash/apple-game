@@ -8,6 +8,7 @@
     <style>
         body { font-family: sans-serif; background: #0f171e; color: #fff; margin: 0; padding: 15px; display: flex; flex-direction: column; align-items: center; -webkit-user-select: none; user-select: none; }
         .header-panel { width: 100%; max-width: 360px; display: flex; justify-content: space-between; background: rgba(255,255,255,0.03); padding: 12px; border-radius: 12px; box-sizing: border-box; margin-bottom: 15px; border: 1px solid rgba(255,255,255,0.05); }
+        .balance { color: #2ecc71; font-weight: bold; }
         .grid { display: grid; grid-template-rows: repeat(10, 1fr); gap: 8px; width: 100%; max-width: 360px; margin-bottom: 20px; }
         .row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; opacity: 0.3; transition: all 0.3s ease; position: relative; }
         .row.active { opacity: 1; transform: scale(1.02); }
@@ -22,31 +23,52 @@
         button { padding: 15px; border-radius: 10px; border: none; font-size: 16px; font-weight: bold; cursor: pointer; }
         .btn-play { background: #2ecc71; color: white; }
         .btn-cashout { background: #f1c40f; color: #111; display: none; }
+        .btn-bonus { background: #3498db; color: white; margin-top: 5px; }
         .row-info { position: absolute; left: -45px; top: 35%; font-size: 11px; color: #64748b; width: 40px; text-align: right; }
         @keyframes shake { 0%, 100% {transform: translateX(0);} 20%, 60% {transform: translateX(-8px);} 40%, 80% {transform: translateX(8px);} }
     </style>
 </head>
 <body>
-    <div class="header-panel"><span>🍏 Apple of Fortune</span><span style="color: #64748b;">Мин. ставка: $10</span></div>
+    <div class="header-panel">
+        <span>🍏 Баланс: <span class="balance" id="user-balance">$0.00</span></span>
+        <span style="color: #64748b;">Мин: $10</span>
+    </div>
     <div class="grid" id="grid"></div>
     <div class="controls">
         <input type="number" id="bet-amount" value="10" min="10">
         <button class="btn-play" id="btn-action" onclick="startGame()">Сделать ставку</button>
         <button class="btn-cashout" id="btn-cashout" onclick="cashoutGame()">Забрать выигрыш</button>
+        <button class="btn-bonus" id="btn-bonus" onclick="getBonus()">🎁 Взять Бонус раз в час</button>
     </div>
+
     <script>
         const tg = window.Telegram.WebApp; tg.expand();
-        const multipliers = [1.23, 1.54, 1.93, 2.41, 3.02, 4.02, 5.37, 7.16, 9.55, 14.33];
-        let currentRow = 0, gameRunning = false, gameField = [], currentBet = 10;
-        function generateField() {
-            let field = [];
-            for (let row = 0; row < 10; row++) {
-                let bad = row < 5 ? 1 : (row < 7 ? 2 : (row < 9 ? 3 : 4));
-                let line = Array(bad).fill(0).concat(Array(5 - bad).fill(1));
-                line.sort(() => Math.random() - 0.5); field.push(line);
+        const userId = tg.initDataUnsafe?.user?.id || 12345; 
+        
+        // Вшит ваш прямой IP хостинга
+        const SERVER_URL = "http://5.129.224.175:8000"; 
+
+        let multipliers = [], currentRow = 0, gameRunning = false;
+
+        async function loadProfile() {
+            try {
+                let res = await fetch(`${SERVER_URL}/api/profile`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({user_id: userId}) });
+                let data = await res.json();
+                document.getElementById('user-balance').innerText = `$${data.balance.toFixed(2)}`;
+                multipliers = data.multipliers;
+                buildField();
+            } catch(e) {
+                alert("Ошибка подключения к серверу бэкенда!");
             }
-            return field;
         }
+
+        async function getBonus() {
+            let res = await fetch(`${SERVER_URL}/api/bonus`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({user_id: userId}) });
+            let data = await res.json();
+            if(data.success) { alert(`🎉 Успешно начислено $${data.amount}!`); loadProfile(); } 
+            else { alert(data.message); }
+        }
+
         function buildField() {
             const grid = document.getElementById('grid'); grid.innerHTML = '';
             for (let r = 9; r >= 0; r--) {
@@ -57,32 +79,48 @@
                 row.appendChild(cellsWrap); grid.appendChild(row);
             }
         }
-        function startGame() {
+
+        async function startGame() {
             if(gameRunning) return;
-            currentBet = parseFloat(document.getElementById('bet-amount').value);
-            if(currentBet < 10 || isNaN(currentBet)) return alert('Минимальная ставка $10');
-            gameRunning = true; currentRow = 0; gameField = generateField(); buildField(); highlightRow();
-            document.getElementById('btn-action').style.display = 'none'; document.getElementById('bet-amount').disabled = true;
-            tg.sendData(JSON.stringify({action: "withdraw", amount: currentBet}));
+            const bet = parseFloat(document.getElementById('bet-amount').value);
+            let res = await fetch(`${SERVER_URL}/api/start`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({user_id: userId, bet: bet}) });
+            if(!res.ok) return alert('Недостаточно денег или неверная ставка!');
+            let data = await res.json();
+            document.getElementById('user-balance').innerText = `$${data.new_balance.toFixed(2)}`;
+            gameRunning = true; currentRow = 0; buildField(); highlightRow();
+            document.getElementById('btn-action').style.display = 'none'; document.getElementById('btn-bonus').style.display = 'none'; document.getElementById('bet-amount').disabled = true;
         }
+
         function highlightRow() { document.querySelectorAll('.row').forEach(el => el.classList.remove('active')); document.querySelector(`.r-${currentRow}`).classList.add('active'); }
-        function step(r, c) {
+
+        async function step(r, c) {
             if(!gameRunning || r !== currentRow) return;
+            let res = await fetch(`${SERVER_URL}/api/step`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({user_id: userId, col: c}) });
+            let data = await res.json();
             const cell = document.getElementById(`c-${r}-${c}`), back = document.getElementById(`b-${r}-${c}`);
             cell.classList.add('flipped');
-            if(gameField[r][c] === 1) {
+            
+            if(data.status === 'continue' || data.status === 'win_all') {
                 back.innerText = '🍏'; cell.classList.add('win');
-                let currentWin = currentBet * multipliers[r];
-                document.getElementById('btn-cashout').style.display = 'block'; document.getElementById('btn-cashout').innerText = `Забрать $${currentWin.toFixed(2)}`;
-                if(currentRow === 9) { alert('👑 ПОБЕДА!'); tg.sendData(JSON.stringify({action: "win", amount: currentWin})); endGameUI(); } else { currentRow++; highlightRow(); }
+                document.getElementById('btn-cashout').style.display = 'block'; document.getElementById('btn-cashout').innerText = `Забрать $${data.current_win.toFixed(2)}`;
+                if(data.status === 'win_all') { alert('👑 ВЫ ИГРУ ПРОШЛИ!'); endGameUI(); } else { currentRow++; highlightRow(); }
             } else {
-                back.innerText = '❌'; cell.classList.add('lose'); document.body.style.animation = "shake 0.3s"; setTimeout(() => document.body.style.animation = "", 300);
-                alert('💥 Проиграли!'); tg.sendData(JSON.stringify({action: "lose", amount: 0})); endGameUI();
+                back.innerText = '❌'; cell.classList.add('lose'); 
+                document.body.style.animation = "shake 0.3s";
+                setTimeout(() => document.body.style.animation = "", 300);
+                alert('💥 Огрызок! Вы проиграли.'); endGameUI();
             }
         }
-        function cashoutGame() { if(!gameRunning || currentRow === 0) return; tg.sendData(JSON.stringify({action: "win", amount: currentBet * multipliers[currentRow - 1]})); endGameUI(); }
-        function endGameUI() { gameRunning = false; document.getElementById('btn-action').style.display = 'block'; document.getElementById('btn-cashout').style.display = 'none'; document.getElementById('bet-amount').disabled = false; setTimeout(() => tg.close(), 1000); }
-        buildField();
+
+        async function cashoutGame() {
+            let res = await fetch(`${SERVER_URL}/api/cashout`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({user_id: userId}) });
+            let data = await res.json();
+            alert(`💰 Вы забрали $${data.win.toFixed(2)}`); endGameUI();
+        }
+
+        function endGameUI() { gameRunning = false; document.getElementById('btn-action').style.display = 'block'; document.getElementById('btn-bonus').style.display = 'block'; document.getElementById('btn-cashout').style.display = 'none'; document.getElementById('bet-amount').disabled = false; loadProfile(); }
+        
+        loadProfile();
     </script>
 </body>
 </html>
