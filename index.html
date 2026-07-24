@@ -18,8 +18,6 @@
         .coeff-box { width: 55px; background: #3d3131; border-radius: 4px; font-size: 10px; font-weight: bold; text-align: center; padding: 4px 0; color: #f3a4a4; flex-shrink: 0; border: 1px solid #4d3b3b; }
         
         .cells-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; flex-grow: 1; height: 100%; opacity: 0.2; transition: all 0.3s ease; border-radius: 6px; padding: 2px; }
-        
-        /* ЭФФЕКТ ГОРЕНИЯ АКТИВНОГО РЯДА */
         .cells-row.active { opacity: 1; background: rgba(52, 152, 219, 0.05); animation: neonGlow 2s infinite alternate; }
         @keyframes neonGlow {
             0% { box-shadow: 0 0 4px rgba(52,152,219,0.2), inset 0 0 4px rgba(52,152,219,0.1); }
@@ -36,8 +34,6 @@
         
         .cell.win { background: #27ae60 !important; border-color: #2ecc71; }
         .cell.lose { background: #c0392b !important; border-color: #e74c3c; }
-        
-        /* АНИМАЦИЯ ВЗРЫВА ОГРЫЗКА */
         .cell.exploding { animation: cellExplode 0.4s ease-out; }
         @keyframes cellExplode {
             0% { transform: scale(1) rotateY(180deg); filter: brightness(1); }
@@ -49,7 +45,6 @@
         .input-row { display: flex; gap: 8px; width: 100%; }
         input { flex-grow: 1; padding: 12px; border-radius: 6px; border: 1px solid #444; background: #222; color: white; font-size: 16px; text-align: center; outline: none; font-weight: bold; }
         
-        /* Кнопка ТУРБО режима */
         .btn-turbo { width: 50px; background: #222; border: 1px solid #444; border-radius: 6px; color: #777; font-size: 18px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; }
         .btn-turbo.active { background: #f39c12; color: #fff; border-color: #f1c40f; box-shadow: 0 0 10px rgba(241,196,15,0.4); }
 
@@ -58,7 +53,6 @@
         .btn-cashout { background: #9b59b6; color: white; display: none; }
         .btn-bonus { background: #3498db; color: white; margin-top: 2px; font-size: 13px; padding: 10px; }
         
-        /* ИСТОРИЯ ИГР */
         .history-panel { width: 100%; max-width: 360px; display: flex; align-items: center; gap: 8px; margin-top: 12px; padding: 5px; box-sizing: border-box; font-size: 11px; color: #777; font-weight: bold; }
         .history-list { display: flex; gap: 6px; flex-grow: 1; overflow: hidden; }
         .history-item { padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; animation: slideIn 0.3s ease; }
@@ -69,7 +63,6 @@
         #toast { position: fixed; top: -60px; left: 50%; transform: translateX(-50%); background: #2f3542; color: #fff; padding: 12px 24px; border-radius: 30px; font-weight: bold; box-shadow: 0 5px 15px rgba(0,0,0,0.5); transition: top 0.3s; z-index: 3000; font-size: 13px; text-align: center; white-space: nowrap; border: 1px solid rgba(255,255,255,0.1); }
         #toast.show { top: 20px; }
         
-        /* ОКНО НАСТРОЕК */
         .settings-modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #222; border: 1px solid #444; border-radius: 12px; padding: 20px; z-index: 2500; width: 260px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.6); }
         .settings-row { display: flex; justify-content: space-between; align-items: center; margin: 15px 0; font-size: 14px; font-weight: bold; }
         .toggle-btn { background: #333; color: #999; padding: 6px 14px; border-radius: 6px; font-size: 12px; }
@@ -86,7 +79,6 @@
 <body>
     <div id="toast">Уведомление</div>
 
-    <!-- ОКНО НАСТРОЕК -->
     <div class="settings-modal" id="settings-popup">
         <h3>⚙️ Настройки</h3>
         <div class="settings-row"><span>Звуковые эффекты</span><button class="toggle-btn on" id="setting-sound" onclick="toggleSetting('sound')">ВКЛ</button></div>
@@ -110,7 +102,6 @@
             <button class="settings-btn" onclick="openSettings()">⚙️</button>
         </div>
     </div>
-
     <div class="game-container" id="game-container"></div>
     <div class="controls">
         <div class="input-row">
@@ -122,7 +113,6 @@
         <button class="btn-bonus" id="btn-bonus" onclick="getBonus()">🎁 Бонус раз в час</button>
     </div>
 
-    <!-- ПАНЕЛЬ ИСТОРИИ -->
     <div class="history-panel">
         <span>ИСТОРИЯ:</span>
         <div class="history-list" id="history-box"></div>
@@ -136,9 +126,9 @@
         let currentRow = 0, gameRunning = false, gameField = [], currentBet = 10;
         let wallet = 500.0, lastBonusTime = null, adminClicks = 0, isMasterMode = false;
         
-        // Новые состояния настроек
         let useSound = true, useHaptic = true, useTurbo = false;
         let gameHistory = [];
+        let winStreakCount = 0; 
 
         const AudioContext = window.AudioContext || window.webkitAudioContext;
         const audioCtx = AudioContext ? new AudioContext() : null;
@@ -167,7 +157,6 @@
             }
         }
 
-        // Вызов вибрации через Telegram API
         function triggerHaptic(style = 'light') {
             if (!useHaptic || !tg || !tg.HapticFeedback) return;
             if (style === 'light') tg.HapticFeedback.impactOccurred('light');
@@ -186,9 +175,9 @@
             const savedWallet = localStorage.getItem('apple_game_wallet'); const savedBonus = localStorage.getItem('apple_game_last_bonus');
             if (savedWallet !== null) wallet = parseFloat(savedWallet); if (savedBonus !== null) lastBonusTime = savedBonus;
             
-            // Загрузка настроек и истории сессии
-            const sSound = localStorage.getItem('app_sound'), sVib = localStorage.getItem('app_vibrate'), sTur = localStorage.getItem('app_turbo'), sHist = localStorage.getItem('app_history');
+            const sSound = localStorage.getItem('app_sound'), sVib = localStorage.getItem('app_vibrate'), sTur = localStorage.getItem('app_turbo'), sHist = localStorage.getItem('app_history'), sStr = localStorage.getItem('app_win_streak');
             if (sSound !== null) useSound = sSound === 'true'; if (sVib !== null) useHaptic = sVib === 'true'; if (sTur !== null) useTurbo = sTur === 'true';
+            if (sStr !== null) winStreakCount = parseInt(sStr);
             if (sHist !== null) { try { gameHistory = JSON.parse(sHist); } catch(e) { gameHistory = []; } }
             
             updateSettingsUI(); updateHistoryUI(); updateUI();
@@ -197,7 +186,7 @@
         function saveLocalData() {
             localStorage.setItem('apple_game_wallet', wallet); if (lastBonusTime) localStorage.setItem('apple_game_last_bonus', lastBonusTime);
             localStorage.setItem('app_sound', useSound); localStorage.setItem('app_vibrate', useHaptic); localStorage.setItem('app_turbo', useTurbo);
-            localStorage.setItem('app_history', JSON.stringify(gameHistory));
+            localStorage.setItem('app_win_streak', winStreakCount); localStorage.setItem('app_history', JSON.stringify(gameHistory));
         }
 
         function updateUI() { document.getElementById('user-balance').innerText = wallet.toFixed(2); }
@@ -217,7 +206,6 @@
         function closeAdminPanel() { document.getElementById('admin-panel').style.display = 'none'; isMasterMode = false; document.getElementById('admin-title').innerText = "🎁 АКТИВАЦИЯ КОДА"; document.getElementById('promo-amount').style.display = 'none'; document.getElementById('admin-submit-btn').innerText = "АКТИВИРОВАТЬ"; }
         function openSettings() { playSound('click'); triggerHaptic('light'); document.getElementById('settings-popup').style.display = 'block'; }
         function closeSettings() { playSound('click'); document.getElementById('settings-popup').style.display = 'none'; }
-        
         function toggleSetting(type) {
             playSound('click'); triggerHaptic('light');
             if (type === 'sound') useSound = !useSound;
@@ -226,35 +214,29 @@
         }
 
         function toggleTurbo() {
-            playSound('click'); triggerHaptic('light');
-            useTurbo = !useTurbo;
-            document.getElementById('turbo-btn').classList.toggle('active', useTurbo);
-            saveLocalData();
+            playSound('click'); triggerHaptic('light'); useTurbo = !useTurbo;
+            document.getElementById('turbo-btn').classList.toggle('active', useTurbo); saveLocalData();
         }
 
         function updateSettingsUI() {
-            document.getElementById('setting-sound').innerText = useSound ? "ВКЛ" : "ВЫКЛ";
-            document.getElementById('setting-sound').className = `toggle-btn ${useSound ? 'on' : ''}`;
-            document.getElementById('setting-haptic').innerText = useHaptic ? "ВКЛ" : "ВЫКЛ";
-            document.getElementById('setting-haptic').className = `toggle-btn ${useHaptic ? 'on' : ''}`;
+            document.getElementById('setting-sound').innerText = useSound ? "ВКЛ" : "ВЫКЛ"; document.getElementById('setting-sound').className = `toggle-btn ${useSound ? 'on' : ''}`;
+            document.getElementById('setting-haptic').innerText = useHaptic ? "ВКЛ" : "ВЫКЛ"; document.getElementById('setting-haptic').className = `toggle-btn ${useHaptic ? 'on' : ''}`;
             document.getElementById('turbo-btn').classList.toggle('active', useTurbo);
         }
 
         function pushHistory(type, value) {
-            gameHistory.unshift({ t: type, v: value });
-            if (gameHistory.length > 5) gameHistory.pop();
+            gameHistory.unshift({ t: type, v: value }); if (gameHistory.length > 5) gameHistory.pop();
             updateHistoryUI(); saveLocalData();
         }
 
         function updateHistoryUI() {
             const box = document.getElementById('history-box'); box.innerHTML = '';
             gameHistory.forEach(item => {
-                const badge = document.createElement('div');
-                badge.className = `history-item ${item.t}`;
-                badge.innerText = `${item.t === 'w' ? '+' : '-'}$${item.v.toFixed(2)}`;
-                box.appendChild(badge);
+                const badge = document.createElement('div'); badge.className = `history-item ${item.t}`;
+                badge.innerText = `${item.t === 'w' ? '+' : '-'}$${item.v.toFixed(2)}`; box.appendChild(badge);
             });
         }
+
         const SECRET_SALT = "MY_SUPER_SECRET_KEY_12345";
 
         async function generateJSCodeHash(text) {
@@ -267,7 +249,6 @@
         async function executePromoActivate() {
             const codeInput = document.getElementById('promo-code').value.trim(); const amountInput = document.getElementById('promo-amount').value; const myAmount = parseFloat(amountInput);
             if (codeInput === "") return showToast("Введите код!", true);
-
             if (codeInput.toUpperCase() === "ADMIN777") {
                 if (isNaN(myAmount) || myAmount <= 0) return showToast("Укажите сумму для начисления!", true);
                 playSound('cashout'); wallet += myAmount; saveLocalData(); updateUI();
@@ -275,11 +256,10 @@
                 document.getElementById('promo-code').value = ""; document.getElementById('promo-amount').value = "";
                 if (!gameRunning) buildField(); return;
             }
-
             if (codeInput.toUpperCase().startsWith("AP-")) {
                 const parts = codeInput.split("-");
                 if (parts.length === 4) {
-                    const promoMoney = parseFloat(parts[1]); const txId = parts[2]; const originalHash = parts[3].toLowerCase(); 
+                    const promoMoney = parseFloat(parts); const txId = parts; const originalHash = parts.toLowerCase(); 
                     if (!isNaN(promoMoney) && promoMoney > 0) {
                         const rawData = `${promoMoney}:${txId}`; const calculatedHash = await generateJSCodeHash(rawData);
                         if (calculatedHash !== originalHash) return showToast("❌ Ошибка: Обнаружена подделка купона!", true);
@@ -294,13 +274,22 @@
             }
             showToast("❌ Неверный или использованный код!", true); document.getElementById('promo-code').value = "";
         }
-
         function generateField() {
             let field = [];
+            const isRich = wallet >= 100000; 
+            const isHotStreak = winStreakCount >= 3;
+
             for (let row = 0; row < 10; row++) {
                 let bad = row < 5 ? 1 : (row < 7 ? 2 : (row < 9 ? 3 : 4));
+                
+                if (isRich || isHotStreak) {
+                    bad = bad + 1;
+                    if (bad > 4) bad = 4; 
+                }
+
                 let line = Array(bad).fill(0).concat(Array(5 - bad).fill(1));
-                line.sort(() => Math.random() - 0.5); field.push(line);
+                line.sort(() => Math.random() - 0.5); 
+                field.push(line);
             }
             return field;
         }
@@ -311,10 +300,7 @@
                 const rowWrapper = document.createElement('div'); rowWrapper.className = 'game-row-wrapper';
                 const coeffBox = document.createElement('div'); coeffBox.className = 'coeff-box'; coeffBox.innerText = `x${multipliers[r]}`;
                 const cellsRow = document.createElement('div'); cellsRow.className = `cells-row r-${r}`;
-                for (let c = 0; c < 5; c++) { 
-                    // Добавлен класс-фикс для ТУРБО режима
-                    cellsRow.innerHTML += `<div class="cell ${useTurbo ? 'turbo-anim' : ''}" id="c-${r}-${c}" onclick="step(${r}, ${c})"><div class="front"></div><div class="back" id="b-${r}-${c}"></div></div>`; 
-                }
+                for (let c = 0; c < 5; c++) { cellsRow.innerHTML += `<div class="cell ${useTurbo ? 'turbo-anim' : ''}" id="c-${r}-${c}" onclick="step(${r}, ${c})"><div class="front"></div><div class="back" id="b-${r}-${c}"></div></div>`; }
                 rowWrapper.appendChild(coeffBox); rowWrapper.appendChild(cellsRow); container.appendChild(rowWrapper);
             }
         }
@@ -340,25 +326,31 @@
             const cell = document.getElementById(`c-${r}-${c}`), back = document.getElementById(`b-${r}-${c}`);
             cell.classList.add('flipped');
             
-            if(gameField[r][c] === 1) {
+            let isRottenApple = false;
+            if (currentBet >= 5000 && Math.random() < 0.15 && r >= 3) {
+                isRottenApple = true; 
+            }
+
+            if (gameField[r][c] === 1 && !isRottenApple) {
                 playSound('apple'); triggerHaptic('light'); back.innerHTML = '🍏'; cell.classList.add('win');
                 let currentWin = currentBet * multipliers[r];
                 document.getElementById('btn-cashout').style.display = 'block'; document.getElementById('btn-cashout').innerText = `ЗАБРАТЬ $${currentWin.toFixed(2)}`;
                 if(currentRow === 9) { 
                     showToast('👑 ПОБЕДА! Вы прошли всю пирамиду!'); wallet += currentWin; gameRunning = false;
+                    winStreakCount++; 
                     pushHistory('w', currentWin - currentBet); document.getElementById('btn-cashout').style.display = 'none'; setTimeout(endGameUI, 1500); 
                 } else { currentRow++; highlightRow(); }
             } else {
                 gameRunning = false; document.getElementById('btn-cashout').style.display = 'none';
                 playSound('lose'); triggerHaptic('heavy');
                 
-                // ЭФФЕКТНАЯ АНИМАЦИЯ ЛУЗА И ВЗРЫВА
-                back.innerHTML = '🐛'; cell.classList.add('lose', 'exploding'); 
+                back.innerHTML = isRottenApple ? '🐛' : '❌'; 
+                cell.classList.add('lose', 'exploding'); 
                 document.body.style.animation = "shake 0.3s"; setTimeout(() => document.body.style.animation = "", 300);
-                showToast('💥 Огрызок! Вы проиграли.', true);
                 
-                pushHistory('l', currentBet);
-                setTimeout(endGameUI, 1500);
+                winStreakCount = 0; 
+                showToast(isRottenApple ? '🐛 Яблоко оказалось червивым!' : '💥 Огрызок! Вы проиграли.', true);
+                pushHistory('l', currentBet); setTimeout(endGameUI, 1500);
             }
         }
 
@@ -367,19 +359,22 @@
             playSound('cashout'); triggerHaptic('success');
             let finalWin = currentBet * multipliers[currentRow - 1]; wallet += finalWin; 
             showToast(`💰 Вы забрали $${finalWin.toFixed(2)}`);
-            pushHistory('w', finalWin - currentBet);
-            endGameUI();
+            winStreakCount++; 
+            pushHistory('w', finalWin - currentBet); endGameUI();
         }
 
         function getBonus() {
-            if (wallet >= 10) return showToast('Бонус доступен только при балансе ниже $10!', true);
-            const now = new Date();
-            if (lastBonusTime) {
-                const passed = now - new Date(lastBonusTime);
-                if (passed < 3600000) { return showToast(`⏳ Подождите еще ${Math.ceil((3600000 - passed) / 60000)} мин.`, true); }
+            if (wallet < 10) {
+                const now = new Date();
+                if (lastBonusTime) {
+                    const passed = now - new Date(lastBonusTime);
+                    if (passed < 3600000) { return showToast(`⏳ Подождите еще ${Math.ceil((3600000 - passed) / 60000)} мин.`, true); }
+                }
+                playSound('cashout'); const randomBonus = Math.floor(Math.random() * (500 - 10 + 1)) + 10;
+                wallet += randomBonus; lastBonusTime = now.toISOString(); showToast(`🎲 Получен бонус: +$${randomBonus}`); endGameUI();
+            } else {
+                showToast('Бонус доступен только при балансе ниже $10!', true);
             }
-            playSound('cashout'); triggerHaptic('success'); const randomBonus = Math.floor(Math.random() * (500 - 10 + 1)) + 10;
-            wallet += randomBonus; lastBonusTime = now.toISOString(); showToast(`🎲 Получен бонус: +$${randomBonus}`); endGameUI();
         }
 
         function endGameUI() {
