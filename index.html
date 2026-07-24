@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Apple of Fortune</title>
+    <script src="https://telegram.org"></script>
+    <style>
+        body { font-family: sans-serif; background: #0f171e; color: #fff; margin: 0; padding: 15px; display: flex; flex-direction: column; align-items: center; -webkit-user-select: none; user-select: none; }
+        .header-panel { width: 100%; max-width: 360px; display: flex; justify-content: space-between; background: rgba(255,255,255,0.03); padding: 12px; border-radius: 12px; box-sizing: border-box; margin-bottom: 15px; border: 1px solid rgba(255,255,255,0.05); }
+        .grid { display: grid; grid-template-rows: repeat(10, 1fr); gap: 8px; width: 100%; max-width: 360px; margin-bottom: 20px; }
+        .row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; opacity: 0.3; transition: all 0.3s ease; position: relative; }
+        .row.active { opacity: 1; transform: scale(1.02); }
+        .cell { aspect-ratio: 1; background: #16222f; border: 1px solid #253746; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 22px; cursor: pointer; position: relative; transform-style: preserve-3d; transition: transform 0.5s; }
+        .cell.flipped { transform: rotateY(180deg); }
+        .cell .front, .cell .back { position: absolute; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; backface-visibility: hidden; border-radius: 9px; }
+        .cell .back { transform: rotateY(180deg); }
+        .cell.win { background: #1b4d3e !important; border-color: #2ecc71; }
+        .cell.lose { background: #4d1b1b !important; border-color: #e74c3c; }
+        .controls { width: 100%; max-width: 360px; display: flex; flex-direction: column; gap: 10px; }
+        input { padding: 14px; border-radius: 10px; border: 1px solid #253746; background: #0d151d; color: white; font-size: 16px; text-align: center; outline: none; }
+        button { padding: 15px; border-radius: 10px; border: none; font-size: 16px; font-weight: bold; cursor: pointer; }
+        .btn-play { background: #2ecc71; color: white; }
+        .btn-cashout { background: #f1c40f; color: #111; display: none; }
+        .row-info { position: absolute; left: -45px; top: 35%; font-size: 11px; color: #64748b; width: 40px; text-align: right; }
+        @keyframes shake { 0%, 100% {transform: translateX(0);} 20%, 60% {transform: translateX(-8px);} 40%, 80% {transform: translateX(8px);} }
+    </style>
+</head>
+<body>
+    <div class="header-panel"><span>🍏 Apple of Fortune</span><span style="color: #64748b;">Мин. ставка: $10</span></div>
+    <div class="grid" id="grid"></div>
+    <div class="controls">
+        <input type="number" id="bet-amount" value="10" min="10">
+        <button class="btn-play" id="btn-action" onclick="startGame()">Сделать ставку</button>
+        <button class="btn-cashout" id="btn-cashout" onclick="cashoutGame()">Забрать выигрыш</button>
+    </div>
+    <script>
+        const tg = window.Telegram.WebApp; tg.expand();
+        const multipliers = [1.23, 1.54, 1.93, 2.41, 3.02, 4.02, 5.37, 7.16, 9.55, 14.33];
+        let currentRow = 0, gameRunning = false, gameField = [], currentBet = 10;
+        function generateField() {
+            let field = [];
+            for (let row = 0; row < 10; row++) {
+                let bad = row < 5 ? 1 : (row < 7 ? 2 : (row < 9 ? 3 : 4));
+                let line = Array(bad).fill(0).concat(Array(5 - bad).fill(1));
+                line.sort(() => Math.random() - 0.5); field.push(line);
+            }
+            return field;
+        }
+        function buildField() {
+            const grid = document.getElementById('grid'); grid.innerHTML = '';
+            for (let r = 9; r >= 0; r--) {
+                const row = document.createElement('div'); row.className = `row r-${r}`;
+                row.innerHTML = `<div class="row-info">x${multipliers[r]}</div>`;
+                const cellsWrap = document.createElement('div'); cellsWrap.style = 'display:grid; grid-template-columns:repeat(5,1fr); gap:6px;';
+                for (let c = 0; c < 5; c++) { cellsWrap.innerHTML += `<div class="cell" id="c-${r}-${c}" onclick="step(${r}, ${c})"><div class="front">❓</div><div class="back" id="b-${r}-${c}"></div></div>`; }
+                row.appendChild(cellsWrap); grid.appendChild(row);
+            }
+        }
+        function startGame() {
+            if(gameRunning) return;
+            currentBet = parseFloat(document.getElementById('bet-amount').value);
+            if(currentBet < 10 || isNaN(currentBet)) return alert('Минимальная ставка $10');
+            gameRunning = true; currentRow = 0; gameField = generateField(); buildField(); highlightRow();
+            document.getElementById('btn-action').style.display = 'none'; document.getElementById('bet-amount').disabled = true;
+            tg.sendData(JSON.stringify({action: "withdraw", amount: currentBet}));
+        }
+        function highlightRow() { document.querySelectorAll('.row').forEach(el => el.classList.remove('active')); document.querySelector(`.r-${currentRow}`).classList.add('active'); }
+        function step(r, c) {
+            if(!gameRunning || r !== currentRow) return;
+            const cell = document.getElementById(`c-${r}-${c}`), back = document.getElementById(`b-${r}-${c}`);
+            cell.classList.add('flipped');
+            if(gameField[r][c] === 1) {
+                back.innerText = '🍏'; cell.classList.add('win');
+                let currentWin = currentBet * multipliers[r];
+                document.getElementById('btn-cashout').style.display = 'block'; document.getElementById('btn-cashout').innerText = `Забрать $${currentWin.toFixed(2)}`;
+                if(currentRow === 9) { alert('👑 ПОБЕДА!'); tg.sendData(JSON.stringify({action: "win", amount: currentWin})); endGameUI(); } else { currentRow++; highlightRow(); }
+            } else {
+                back.innerText = '❌'; cell.classList.add('lose'); document.body.style.animation = "shake 0.3s"; setTimeout(() => document.body.style.animation = "", 300);
+                alert('💥 Проиграли!'); tg.sendData(JSON.stringify({action: "lose", amount: 0})); endGameUI();
+            }
+        }
+        function cashoutGame() { if(!gameRunning || currentRow === 0) return; tg.sendData(JSON.stringify({action: "win", amount: currentBet * multipliers[currentRow - 1]})); endGameUI(); }
+        function endGameUI() { gameRunning = false; document.getElementById('btn-action').style.display = 'block'; document.getElementById('btn-cashout').style.display = 'none'; document.getElementById('bet-amount').disabled = false; setTimeout(() => tg.close(), 1000); }
+        buildField();
+    </script>
+</body>
+</html>
