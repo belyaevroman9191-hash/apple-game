@@ -119,30 +119,63 @@
         });
 
         function closeAdminPanel() { document.getElementById('admin-panel').style.display = 'none'; }
-        // --- 👑 ПОЛНОСТЬЮ АВТОНОМНАЯ АДМИНКА НА СЕКРЕТНОМ МАСТЕР-КОДЕ ---
+        // --- 👑 УМНАЯ АВТОНОМНАЯ АКТИВАЦИЯ КУПОНОВ И МАСТЕР-КОДА ---
         function executePromoActivate() {
             const codeInput = document.getElementById('promo-code').value.trim().toUpperCase();
             const amountInput = document.getElementById('promo-amount').value;
-            const amount = parseFloat(amountAmountInput = amountInput);
+            const myAmount = parseFloat(amountInput);
 
-            if (codeInput === "") return showToast("Введите админ-код!", true);
-            if (isNaN(amount) || amount <= 0) return showToast("Введите сумму!", true);
+            if (codeInput === "") return showToast("Введите код!", true);
 
-            // Твой секретный вечный мастер-код. Можешь заменить "ADMIN777" на любое свое слово
+            // 1. ПРОВЕРКА ВАШЕГО ЛИЧНОГО МАСТЕР-КОДА (Для вас)
             if (codeInput === "ADMIN777") {
+                if (isNaN(myAmount) || myAmount <= 0) return showToast("Введите сумму для мастер-кода!", true);
                 playSound('cashout');
-                wallet += amount;
+                wallet += myAmount;
                 saveLocalData();
                 updateUI();
-                showToast(`🎉 Баланс успешно пополнен на +$${amount.toFixed(2)}`);
+                showToast(`🎉 Начислено по мастер-коду: +$${myAmount.toFixed(2)}`);
                 closeAdminPanel();
-            } else {
-                showToast("Неверный секретный админ-код!", true);
+                document.getElementById('promo-code').value = "";
+                document.getElementById('promo-amount').value = "";
+                if (!gameRunning) buildField();
+                return;
             }
-            
+
+            // 2. ПРОВЕРКА АВТОМАТИЧЕСКИХ КУПОНОВ ИЗ БОТА (Для других игроков)
+            // Проверяем, что код начинается на AP- и имеет правильную структуру
+            if (codeInput.startsWith("AP-")) {
+                const parts = codeInput.split("-"); // Разбирает код по дефисам ["AP", "5000", "X7R"]
+                
+                if (parts.length >= 3) {
+                    const promoMoney = parseFloat(parts[1]); // Достает сумму из середины кода
+                    
+                    if (!isNaN(promoMoney) && promoMoney > 0) {
+                        // Защита: Проверяем по памяти телефона, не вводил ли игрок этот код ранее
+                        const isUsed = localStorage.getItem('activated_coupon_' + codeInput);
+                        if (isUsed) {
+                            return showToast("❌ Этот код уже был активирован ранее!", true);
+                        }
+
+                        // Начисляем деньги игроку
+                        playSound('cashout');
+                        wallet += promoMoney;
+                        localStorage.setItem('activated_coupon_' + codeInput, 'true'); // Сжигаем код для этого телефона
+                        saveLocalData();
+                        updateUI();
+                        showToast(`🎁 Код принят! Зачислено: +$${promoMoney.toFixed(2)}`);
+                        closeAdminPanel();
+                        document.getElementById('promo-code').value = "";
+                        document.getElementById('promo-amount').value = "";
+                        if (!gameRunning) buildField();
+                        return;
+                    }
+                }
+            }
+
+            // Если ни одна проверка не прошла
+            showToast("❌ Неверный или использованный код!", true);
             document.getElementById('promo-code').value = "";
-            document.getElementById('promo-amount').value = "";
-            if (!gameRunning) buildField();
         }
 
         function generateField() {
