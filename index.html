@@ -11,18 +11,12 @@
         .balance-box { display: flex; align-items: center; gap: 5px; }
         .balance-coin { color: #f1c40f; font-size: 18px; }
 
-        /* Идеальное выравнивание игрового поля как на скриншоте */
         .game-container { width: 100%; max-width: 360px; display: flex; flex-direction: column; gap: 5px; background: #262626; padding: 12px; border-radius: 8px; box-sizing: border-box; margin-bottom: 15px; }
         .game-row-wrapper { display: flex; align-items: center; width: 100%; gap: 10px; height: 38px; }
-        
-        /* Кнопка коэффициента слева */
         .coeff-box { width: 55px; background: #3d3131; border-radius: 4px; font-size: 10px; font-weight: bold; text-align: center; padding: 4px 0; color: #f3a4a4; flex-shrink: 0; border: 1px solid #4d3b3b; }
-        
-        /* Ряд из 5 квадратных клеток */
         .cells-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; flex-grow: 1; height: 100%; opacity: 0.2; transition: opacity 0.2s; }
         .cells-row.active { opacity: 1; }
         
-        /* Строгие адаптивные квадраты */
         .cell { height: 100%; background: #333333; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 22px; cursor: pointer; position: relative; transform-style: preserve-3d; transition: transform 0.4s; border: 1px solid #444; }
         .cell.flipped { transform: rotateY(180deg); }
         .cell .front, .cell .back { position: absolute; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; backface-visibility: hidden; border-radius: 3px; }
@@ -30,11 +24,9 @@
         .cells-row.active .cell .front { border: 1px solid #4a90e2; }
         .cell .back { transform: rotateY(180deg); }
         
-        /* Цвета победы и поражения */
         .cell.win { background: #27ae60 !important; border-color: #2ecc71; }
         .cell.lose { background: #c0392b !important; border-color: #e74c3c; }
         
-        /* Панель управления внизу */
         .controls { width: 100%; max-width: 360px; display: flex; flex-direction: column; gap: 8px; margin-top: auto; }
         input { padding: 12px; border-radius: 6px; border: 1px solid #444; background: #222; color: white; font-size: 16px; text-align: center; outline: none; font-weight: bold; }
         
@@ -45,30 +37,44 @@
         
         #toast { position: fixed; top: -60px; left: 50%; transform: translateX(-50%); background: #2f3542; color: #fff; padding: 12px 24px; border-radius: 30px; font-weight: bold; box-shadow: 0 5px 15px rgba(0,0,0,0.5); transition: top 0.3s; z-index: 1000; font-size: 13px; text-align: center; }
         #toast.show { top: 20px; }
-        @keyframes shake { 0%, 100% {transform: translateX(0);} 20%, 60% {transform: translateX(-6px);} 40%, 80% {transform: translateX(6px);} }
+
+        /* Стиль продвинутой админки с выбором игрока */
+        .admin-modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #222; border: 2px solid #3498db; border-radius: 12px; padding: 20px; z-index: 2000; width: 290px; box-shadow: 0 0 20px rgba(52,152,219,0.5); text-align: center; box-sizing: border-box; }
+        .admin-modal h3 { margin-top: 0; color: #3498db; font-size: 16px; text-transform: uppercase; margin-bottom: 15px; }
+        .admin-modal input { width: 100%; box-sizing: border-box; margin-bottom: 10px; font-size: 14px; padding: 10px; }
+        .admin-btn { background: #3498db; color: white; width: 100%; padding: 12px; border-radius: 6px; font-weight: bold; font-size: 14px; }
+        .admin-close { color: #aaa; font-size: 12px; margin-top: 12px; cursor: pointer; display: block; text-decoration: underline; }
     </style>
 </head>
 <body>
 
     <div id="toast">Уведомление</div>
 
+    <!-- Модернизированное окно админки -->
+    <div class="admin-modal" id="admin-panel">
+        <h3>👑 Админ-Панель</h3>
+        <input type="text" id="admin-target" placeholder="ID игрока или @username">
+        <input type="number" id="admin-amount" placeholder="Сумма начисления" min="1">
+        <button class="admin-btn" onclick="executeAdminGive()">Выдать валюту</button>
+        <span class="admin-close" onclick="closeAdminPanel()">Закрыть</span>
+    </div>
+
     <div class="header-panel">
-        <span>🍏 Apple of Fortune</span>
+        <span id="secret-trigger" style="cursor: pointer;">🍏 Apple of Fortune</span>
         <div class="balance-box">
             <span class="balance-coin">🪙</span>
             <span id="user-balance">500.00</span>
         </div>
     </div>
 
-    <!-- Основной контейнер игры -->
     <div class="game-container" id="game-container"></div>
-
     <div class="controls">
         <input type="number" id="bet-amount" value="10" min="10">
         <button class="btn-play" id="btn-action" onclick="startGame()">Сделать ставку</button>
         <button class="btn-cashout" id="btn-cashout" onclick="cashoutGame()">Забрать выигрыш</button>
         <button class="btn-bonus" id="btn-bonus" onclick="getBonus()">🎁 Бонус раз в час</button>
     </div>
+
     <script>
         const tg = window.Telegram?.WebApp;
         if (tg && typeof tg.expand === 'function') tg.expand();
@@ -77,6 +83,7 @@
         let currentRow = 0, gameRunning = false, gameField = [], currentBet = 10;
         let wallet = 500.0;
         let lastBonusTime = null;
+        let adminClicks = 0;
 
         const AudioContext = window.AudioContext || window.webkitAudioContext;
         const audioCtx = AudioContext ? new AudioContext() : null;
@@ -86,7 +93,6 @@
             if (audioCtx.state === 'suspended') audioCtx.resume();
             const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
             osc.connect(gain); gain.connect(audioCtx.destination);
-
             if (type === 'click') {
                 osc.type = 'sine'; osc.frequency.setValueAtTime(300, audioCtx.currentTime);
                 osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.05);
@@ -135,6 +141,57 @@
         function updateUI() {
             document.getElementById('user-balance').innerText = wallet.toFixed(2);
         }
+        // --- ПРОДВИНУТАЯ СЕКРЕТНАЯ АДМИНКА ---
+        document.getElementById('secret-trigger').addEventListener('click', () => {
+            adminClicks++;
+            if (adminClicks >= 3) {
+                adminClicks = 0;
+                const accessCode = prompt("Введите секретный код админа:");
+                if (accessCode === "admin1312") {
+                    document.getElementById('admin-panel').style.display = 'block';
+                } else if (accessCode !== null) {
+                    alert("Неверный код доступа!");
+                }
+            }
+        });
+
+        function closeAdminPanel() {
+            document.getElementById('admin-panel').style.display = 'none';
+        }
+
+        function executeAdminGive() {
+            const target = document.getElementById('admin-target').value.trim();
+            const amountInput = document.getElementById('admin-amount').value;
+            const amount = parseFloat(amountInput);
+            const myTgId = tg?.initDataUnsafe?.user?.id ? String(tg.initDataUnsafe.user.id) : "12345";
+
+            if (isNaN(amount) || amount <= 0) return alert("Введите корректную сумму!");
+
+            // Если поле пустое или там ваш ID/Ник — начисляем локально вам на экран
+            if (target === "" || target === myTgId || (tg?.initDataUnsafe?.user?.username && target === '@' + tg.initDataUnsafe.user.username)) {
+                wallet += amount;
+                saveLocalData();
+                updateUI();
+                showToast(`👑 Начислено +$${amount.toFixed(2)} на ваш счет`);
+            } else {
+                // Если указан другой игрок — отправляем боту секретную строку-команду
+                if (tg && typeof tg.sendData === 'function') {
+                    tg.sendData(JSON.stringify({
+                        action: "admin_give",
+                        player: target,
+                        money: amount
+                    }));
+                    showToast(`📤 Чек на $${amount} отправлен боту!`, false);
+                } else {
+                    alert("Отправка данных игрокам работает только внутри Telegram!");
+                }
+            }
+            closeAdminPanel();
+            document.getElementById('admin-target').value = "";
+            document.getElementById('admin-amount').value = "";
+            if (!gameRunning) buildField();
+        }
+        // -------------------------------------
 
         function generateField() {
             let field = [];
@@ -150,27 +207,17 @@
         function buildField() {
             const container = document.getElementById('game-container');
             container.innerHTML = '';
-            
             for (let r = 9; r >= 0; r--) {
                 const rowWrapper = document.createElement('div');
                 rowWrapper.className = 'game-row-wrapper';
-
                 const coeffBox = document.createElement('div');
                 coeffBox.className = 'coeff-box';
                 coeffBox.innerText = `x${multipliers[r]}`;
-
                 const cellsRow = document.createElement('div');
                 cellsRow.className = `cells-row r-${r}`;
-
                 for (let c = 0; c < 5; c++) {
-                    cellsRow.innerHTML += `
-                        <div class="cell" id="c-${r}-${c}" onclick="step(${r}, ${c})">
-                            <div class="front"></div>
-                            <div class="back" id="b-${r}-${c}"></div>
-                        </div>
-                    `;
+                    cellsRow.innerHTML += `<div class="cell" id="c-${r}-${c}" onclick="step(${r}, ${c})"><div class="front"></div><div class="back" id="b-${r}-${c}"></div></div>`;
                 }
-                
                 rowWrapper.appendChild(coeffBox);
                 rowWrapper.appendChild(cellsRow);
                 container.appendChild(rowWrapper);
@@ -182,21 +229,12 @@
             currentBet = parseFloat(document.getElementById('bet-amount').value);
             if(currentBet < 10 || isNaN(currentBet)) return showToast('Минимальная ставка $10', true);
             if(currentBet > wallet) return showToast('Недостаточно баланса!', true);
-            
             playSound('click');
             wallet -= currentBet;
             saveLocalData();
             updateUI();
-
-            gameRunning = true;
-            currentRow = 0;
-            gameField = generateField();
-            buildField();
-            highlightRow();
-            
-            document.getElementById('btn-action').style.display = 'none';
-            document.getElementById('btn-bonus').style.display = 'none';
-            document.getElementById('bet-amount').disabled = true;
+            gameRunning = true; currentRow = 0; gameField = generateField(); buildField(); highlightRow();
+            document.getElementById('btn-action').style.display = 'none'; document.getElementById('btn-bonus').style.display = 'none'; document.getElementById('bet-amount').disabled = true;
         }
 
         function highlightRow() {
@@ -207,76 +245,39 @@
 
         function step(r, c) {
             if(!gameRunning || r !== currentRow) return;
-            
-            const cell = document.getElementById(`c-${r}-${c}`);
-            const back = document.getElementById(`b-${r}-${c}`);
+            const cell = document.getElementById(`c-${r}-${c}`), back = document.getElementById(`b-${r}-${c}`);
             cell.classList.add('flipped');
-
             if(gameField[r][c] === 1) {
-                playSound('apple');
-                back.innerHTML = '🍏';
-                cell.classList.add('win');
+                playSound('apple'); back.innerHTML = '🍏'; cell.classList.add('win');
                 let currentWin = currentBet * multipliers[r];
-                document.getElementById('btn-cashout').style.display = 'block';
-                document.getElementById('btn-cashout').innerText = `ЗАБРАТЬ $${currentWin.toFixed(2)}`;
-                
-                if(currentRow === 9) {
-                    showToast('👑 ПОБЕДА! Вы прошли всю пирамиду!');
-                    wallet += currentWin;
-                    setTimeout(endGameUI, 1500);
-                } else {
-                    currentRow++;
-                    highlightRow();
-                }
+                document.getElementById('btn-cashout').style.display = 'block'; document.getElementById('btn-cashout').innerText = `ЗАБРАТЬ $${currentWin.toFixed(2)}`;
+                if(currentRow === 9) { showToast('👑 ПОБЕДА! Вы прошли всю пирамиду!'); wallet += currentWin; setTimeout(endGameUI, 1500); } else { currentRow++; highlightRow(); }
             } else {
-                playSound('lose');
-                back.innerHTML = '❌';
-                cell.classList.add('lose');
-                document.body.style.animation = "shake 0.3s";
-                setTimeout(() => document.body.style.animation = "", 300);
-                showToast('💥 Огрызок! Вы проиграли.', true);
-                setTimeout(endGameUI, 1500);
+                playSound('lose'); back.innerHTML = '❌'; cell.classList.add('lose'); document.body.style.animation = "shake 0.3s"; setTimeout(() => document.body.style.animation = "", 300);
+                showToast('💥 Огрызок! Вы проиграли.', true); setTimeout(endGameUI, 1500);
             }
         }
 
         function cashoutGame() {
             if(!gameRunning || currentRow === 0) return;
-            playSound('cashout');
-            let finalWin = currentBet * multipliers[currentRow - 1];
-            wallet += finalWin;
-            showToast(`💰 Вы забрали $${finalWin.toFixed(2)}`);
-            endGameUI();
+            playSound('cashout'); let finalWin = currentBet * multipliers[currentRow - 1];
+            wallet += finalWin; showToast(`💰 Вы забрали $${finalWin.toFixed(2)}`); endGameUI();
         }
 
         function getBonus() {
             if (wallet >= 10) return showToast('Бонус доступен только при балансе ниже $10!', true);
-            
             const now = new Date();
             if (lastBonusTime) {
                 const passed = now - new Date(lastBonusTime);
-                if (passed < 3600000) { 
-                    const leftMins = Math.ceil((3600000 - passed) / 60000);
-                    return showToast(`⏳ Подождите еще ${leftMins} мин.`, true);
-                }
+                if (passed < 3600000) { return showToast(`⏳ Подождите еще ${Math.ceil((3600000 - passed) / 60000)} мин.`, true); }
             }
-            
-            playSound('cashout');
-            const randomBonus = Math.floor(Math.random() * (500 - 10 + 1)) + 10;
-            wallet += randomBonus;
-            lastBonusTime = now.toISOString();
-            showToast(`🎲 Получен бонус: +$${randomBonus}`);
-            endGameUI();
+            playSound('cashout'); const randomBonus = Math.floor(Math.random() * (500 - 10 + 1)) + 10;
+            wallet += randomBonus; lastBonusTime = now.toISOString(); showToast(`🎲 Получен бонус: +$${randomBonus}`); endGameUI();
         }
 
         function endGameUI() {
-            gameRunning = false;
-            document.getElementById('btn-action').style.display = 'block';
-            document.getElementById('btn-bonus').style.display = 'block';
-            document.getElementById('btn-cashout').style.display = 'none';
-            document.getElementById('bet-amount').disabled = false;
-            saveLocalData();
-            updateUI();
-            buildField();
+            gameRunning = false; document.getElementById('btn-action').style.display = 'block'; document.getElementById('btn-bonus').style.display = 'block'; document.getElementById('btn-cashout').style.display = 'none'; document.getElementById('bet-amount').disabled = false;
+            saveLocalData(); updateUI(); buildField();
         }
 
         const shakeStyle = document.createElement('style');
