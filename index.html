@@ -259,7 +259,7 @@
             if (codeInput.toUpperCase().startsWith("AP-")) {
                 const parts = codeInput.split("-");
                 if (parts.length === 4) {
-                    const promoMoney = parseFloat(parts); const txId = parts; const originalHash = parts.toLowerCase(); 
+                    const promoMoney = parseFloat(parts[1]); const txId = parts[2]; const originalHash = parts[3].toLowerCase();
                     if (!isNaN(promoMoney) && promoMoney > 0) {
                         const rawData = `${promoMoney}:${txId}`; const calculatedHash = await generateJSCodeHash(rawData);
                         if (calculatedHash !== originalHash) return showToast("❌ Ошибка: Обнаружена подделка купона!", true);
