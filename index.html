@@ -92,14 +92,14 @@
  <span class="admin-close" onclick="closeSettings()">Закрыть</span>
  </div>
  <div class="admin-modal" id="admin-panel">
- <h3 id="admin-title">Ἰ АКТИВАЦИЯ КОДА</h3>
+ <h3 id="admin-title">🔑 АКТИВАЦИЯ КОДА</h3>
  <input type="text" id="promo-code" placeholder="AP-XXXXXX">
  <input type="number" id="promo-amount" placeholder="СУММА НАЧИСЛЕНИЯ" min="1" style="display: none;">
  <button class="admin-btn" id="admin-submit-btn" onclick="executePromoActivate()">АКТИВИРОВАТЬ</button>
  <span class="admin-close" onclick="closeAdminPanel()">Закрыть</span>
  </div>
  <div class="header-panel">
- <span id="secret-trigger" style="cursor: pointer;">ἴ Apple of Fortune</span>
+ <span id="secret-trigger" style="cursor: pointer;">🍏 Apple of Fortune</span>
  <div class="balance-box">
  <span class="balance-coin">$</span>
  <span id="user-balance" style="cursor: pointer;">500.00</span>
@@ -114,7 +114,7 @@
  </div>
  <button class="btn-play" id="btn-action" onclick="startGame()">Сделать ставку</button>
  <button class="btn-cashout" id="btn-cashout" onclick="cashoutGame()">Забрать выигрыш</button>
- <button class="btn-bonus" id="btn-bonus" onclick="getBonus()">Ἰ Бонус раз в час</button>
+ <button class="btn-bonus" id="btn-bonus" onclick="getBonus()">🎁 Бонус раз в час</button>
  </div>
  <div class="history-panel">
  <span>ИСТОРИЯ:</span>
@@ -200,12 +200,12 @@
 
  document.getElementById('promo-code').addEventListener('input', (e) => {
  if (e.target.value.trim().toUpperCase() === "ADMIN777") {
- isMasterMode = true; document.getElementById('admin-title').innerText = "ὅ МАСТЕР-РЕЖИМ"; document.getElementById('promo-amount').style.display = 'block'; document.getElementById('admin-submit-btn').innerText = "НАЧИСЛИТЬ СУММУ";
+ isMasterMode = true; document.getElementById('admin-title').innerText = "👑 МАСТЕР-РЕЖИМ"; document.getElementById('promo-amount').style.display = 'block'; document.getElementById('admin-submit-btn').innerText = "НАЧИСЛИТЬ СУММУ";
  } else if (isMasterMode && !e.target.value.trim().toUpperCase().startsWith("ADMIN777")) {
- isMasterMode = false; document.getElementById('admin-title').innerText = "Ἰ АКТИВАЦИЯ КОДА"; document.getElementById('promo-amount').style.display = 'none'; document.getElementById('admin-submit-btn').innerText = "АКТИВИРОВАТЬ";
+ isMasterMode = false; document.getElementById('admin-title').innerText = "🔑 АКТИВАЦИЯ КОДА"; document.getElementById('promo-amount').style.display = 'none'; document.getElementById('admin-submit-btn').innerText = "АКТИВИРОВАТЬ";
  }
  });
- function closeAdminPanel() { document.getElementById('admin-panel').style.display = 'none'; isMasterMode = false; document.getElementById('admin-title').innerText = "Ἰ АКТИВАЦИЯ КОДА"; document.getElementById('promo-amount').style.display = 'none'; document.getElementById('admin-submit-btn').innerText = "АКТИВИРОВАТЬ"; }
+ function closeAdminPanel() { document.getElementById('admin-panel').style.display = 'none'; isMasterMode = false; document.getElementById('admin-title').innerText = "🔑 АКТИВАЦИЯ КОДА"; document.getElementById('promo-amount').style.display = 'none'; document.getElementById('admin-submit-btn').innerText = "АКТИВИРОВАТЬ"; }
  function openSettings() { playSound('click'); triggerHaptic('light'); document.getElementById('settings-popup').style.display = 'block'; }
  function closeSettings() { playSound('click'); document.getElementById('settings-popup').style.display = 'none'; }
  function toggleSetting(type) {
@@ -247,21 +247,21 @@
  if (codeInput.toUpperCase() === "ADMIN777") {
  if (isNaN(myAmount) || myAmount <= 0) return showToast("Укажите сумму для начисления!", true);
  playSound('cashout'); wallet += myAmount; saveLocalData(); updateUI();
- showToast(`Ἰ Начислено по мастер-коду: +$${myAmount.toFixed(2)}`); closeAdminPanel();
+ showToast(`💎 Начислено по мастер-коду: +$${myAmount.toFixed(2)}`); closeAdminPanel();
  document.getElementById('promo-code').value = ""; document.getElementById('promo-amount').value = "";
  if (!gameRunning) buildField(); return;
  }
  if (codeInput.toUpperCase().startsWith("AP-")) {
  const parts = codeInput.split("-");
  if (parts.length === 4) {
- const promoMoney = parseFloat(parts[1]); const txId = parts[2]; const originalHash = parts[3].toLowerCase();
+ const promoMoney = parseFloat(parts); const txId = parts; const originalHash = parts.toLowerCase();
  if (!isNaN(promoMoney) && promoMoney > 0) {
  const rawData = `${promoMoney}:${txId}`; const calculatedHash = await generateJSCodeHash(rawData);
  if (calculatedHash !== originalHash) return showToast("❌ Ошибка: Обнаружена подделка купона!", true);
  const isTxUsed = localStorage.getItem('used_tx_id_' + txId);
  if (isTxUsed) return showToast("❌ Этот купон уже был активирован ранее!", true);
  playSound('cashout'); wallet += promoMoney; localStorage.setItem('used_tx_id_' + txId, 'true'); saveLocalData(); updateUI();
- showToast(`Ἰ Купон принят! Начислено: +$${promoMoney.toFixed(2)}`); closeAdminPanel();
+ showToast(`💎 Купон принят! Начислено: +$${promoMoney.toFixed(2)}`); closeAdminPanel();
  document.getElementById('promo-code').value = ""; document.getElementById('promo-amount').value = "";
  if (!gameRunning) buildField(); return;
  }
@@ -332,11 +332,11 @@
  isRottenApple = true; 
  }
  if (gameField[r][c] === 1 && !isRottenApple) {
- playSound('apple'); triggerHaptic('light'); back.innerHTML = 'ἴ'; cell.classList.add('win');
+ playSound('apple'); triggerHaptic('light'); back.innerHTML = '🍏'; cell.classList.add('win');
  let currentWin = currentBet * multipliers[r];
  document.getElementById('btn-cashout').style.display = 'block'; document.getElementById('btn-cashout').innerText = `ЗАБРАТЬ $${currentWin.toFixed(2)}`;
  if(currentRow === 9) { 
- showToast('ὅ ПОБЕДА! Вы прошли всю пирамиду!'); wallet += currentWin; gameRunning = false;
+ showToast('🏆 ПОБЕДА! Вы прошли всю пирамиду!'); wallet += currentWin; gameRunning = false;
  winStreakCount++; 
  pushHistory('w', currentWin - currentBet); document.getElementById('btn-cashout').style.display = 'none'; setTimeout(endGameUI, 1500); 
  } else { currentRow++; highlightRow(); }
@@ -344,12 +344,12 @@
  gameRunning = false; document.getElementById('btn-cashout').style.display = 'none';
  playSound('lose'); triggerHaptic('heavy');
  
- back.innerHTML = isRottenApple ? 'ὁ' : '❌'; 
+ back.innerHTML = isRottenApple ? '🐛' : '❌'; 
  cell.classList.add('lose', 'exploding'); 
  document.body.style.animation = "shake 0.3s"; setTimeout(() => document.body.style.animation = "", 300);
  
  winStreakCount = 0; 
- showToast(isRottenApple ? 'ὁ Яблоко оказалось червивым!' : 'Ὂ Огрызок! Вы проиграли.', true);
+ showToast(isRottenApple ? '🐛 Яблоко оказалось червивым!' : '💥 Огрызок! Вы проиграли.', true);
  pushHistory('l', currentBet); setTimeout(endGameUI, 1500);
  }
  }
@@ -357,7 +357,7 @@
  if(!gameRunning || currentRow === 0) { document.getElementById('btn-cashout').style.display = 'none'; return; }
  playSound('cashout'); triggerHaptic('success');
  let finalWin = currentBet * multipliers[currentRow - 1]; wallet += finalWin; 
- showToast(`Ὃ Вы забрали $${finalWin.toFixed(2)}`);
+ showToast(`💰 Вы забрали $${finalWin.toFixed(2)}`);
  winStreakCount++; 
  pushHistory('w', finalWin - currentBet); endGameUI();
  }
@@ -369,7 +369,7 @@
  if (passed < 3600000) { return showToast(`⏳ Подождите еще ${Math.ceil((3600000 - passed) / 60000)} мин.`, true); }
  }
  playSound('cashout'); const randomBonus = Math.floor(Math.random() * (500 - 10 + 1)) + 10;
- wallet += randomBonus; lastBonusTime = now.toISOString(); showToast(`Ἳ Получен бонус: +$${randomBonus}`); endGameUI();
+ wallet += randomBonus; lastBonusTime = now.toISOString(); showToast(`🎁 Получен бонус: +$${randomBonus}`); endGameUI();
  } else {
  showToast('Бонус доступен только при балансе ниже $10!', true);
  }
