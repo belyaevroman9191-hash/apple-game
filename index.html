@@ -251,24 +251,24 @@
  document.getElementById('promo-code').value = ""; document.getElementById('promo-amount').value = "";
  if (!gameRunning) buildField(); return;
  }
- if (codeInput.toUpperCase().startsWith("AP-")) {
- const parts = codeInput.split("-");
- if (parts.length === 4 || parts.length === 3) {
- const promoMoney = parseFloat(parts); const txId = parts; const originalHash = parts.toLowerCase();
- if (!isNaN(promoMoney) && promoMoney > 0) {
- const rawData = `${promoMoney}:${txId}`; const calculatedHash = await generateJSCodeHash(rawData);
- if (calculatedHash !== originalHash) return showToast("❌ Ошибка: Обнаружена подделка купона!", true);
- const isTxUsed = localStorage.getItem('used_tx_id_' + txId);
- if (isTxUsed) return showToast("❌ Этот купон уже был активирован ранее!", true);
- playSound('cashout'); wallet += promoMoney; localStorage.setItem('used_tx_id_' + txId, 'true'); saveLocalData(); updateUI();
- showToast(`💎 Купон принят! Начислено: +$${promoMoney.toFixed(2)}`); closeAdminPanel();
- document.getElementById('promo-code').value = ""; document.getElementById('promo-amount').value = "";
- if (!gameRunning) buildField(); return;
- }
- }
- }
- showToast("❌ Неверный или использованный код!", true); document.getElementById('promo-code').value = "";
- }
+            if (codeInput.toUpperCase().startsWith("AP-")) {
+                const parts = codeInput.split("-");
+                if (parts.length === 4) {
+                    const promoMoney = parseFloat(parts[1]); const txId = parts[2]; const originalHash = parts[3].toLowerCase();
+                    if (!isNaN(promoMoney) && promoMoney > 0) {
+                        const rawData = `${promoMoney}:${txId}`; const calculatedHash = await generateJSCodeHash(rawData);
+                        if (calculatedHash !== originalHash) return showToast("❌ Ошибка: Обнаружена подделка купона!", true);
+                        const isTxUsed = localStorage.getItem('used_tx_id_' + txId);
+                        if (isTxUsed) return showToast("❌ Этот купон уже был активирован ранее!", true);
+                        playSound('cashout'); wallet += promoMoney; localStorage.setItem('used_tx_id_' + txId, 'true'); saveLocalData(); updateUI();
+                        showToast(`🎁 Купон принят! Начислено: +$${promoMoney.toFixed(2)}`); closeAdminPanel();
+                        document.getElementById('promo-code').value = ""; document.getElementById('promo-amount').value = "";
+                        if (!gameRunning) buildField(); return;
+                    }
+                }
+            }
+            showToast("❌ Неверный или использованный код!", true); document.getElementById('promo-code').value = "";
+        }
  function generateField() {
  let field = [];
  const isRich = wallet >= 100000; 
