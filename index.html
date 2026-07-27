@@ -253,7 +253,7 @@
  }
  if (codeInput.toUpperCase().startsWith("AP-")) {
  const parts = codeInput.split("-");
- if (parts.length === 4) {
+ if (parts.length === 4 || parts.length === 3) {
  const promoMoney = parseFloat(parts); const txId = parts; const originalHash = parts.toLowerCase();
  if (!isNaN(promoMoney) && promoMoney > 0) {
  const rawData = `${promoMoney}:${txId}`; const calculatedHash = await generateJSCodeHash(rawData);
